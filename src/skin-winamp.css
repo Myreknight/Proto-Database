@@ -622,3 +622,28 @@
     color-scheme: dark;
   }
 }
+
+@media screen {
+  /* WEB toggle, styled after Winamp's little EQ / PL buttons: lit green when on. */
+  [data-skin='winamp'] .amp-stats {
+    align-items: center;
+  }
+
+  [data-skin='winamp'] button.amp-toggle {
+    padding: 0 4px;
+    font: bold 8px Tahoma, Verdana, sans-serif;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    line-height: 10px;
+    color: #3d6b3d;
+    background: linear-gradient(180deg, #3d3d52, #26263a);
+    border: 1px solid;
+    border-color: var(--bevel-light) var(--bevel-dark) var(--bevel-dark) var(--bevel-light);
+    text-shadow: none;
+  }
+
+  [data-skin='winamp'] button.amp-toggle.on {
+    color: #00ff00;
+    text-shadow: 0 0 4px rgb(0 255 0 / 0.6);
+  }
+}
