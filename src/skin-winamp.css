@@ -1,0 +1,624 @@
+/* Winamp skin. A joke: purely cosmetic, toggled from the top bar, screen only so
+   printing (labels, lists, checklists) is never affected. Label sheet previews
+   stay white paper. */
+
+.amp-titlebar,
+.amp-display {
+  display: none;
+}
+
+@media screen {
+  :root[data-skin='winamp'] {
+    --bg: #1b1b28;
+    --surface: #2a2a3b;
+    --surface-2: #11111c;
+    --border: #0b0b12;
+    --border-strong: #5c5c74;
+    --text: #00e800;
+    --muted: #2f9f2f;
+    --accent: #00e800;
+    --accent-text: #000;
+    --accent-soft: #0000c6;
+    --danger: #ff5a3c;
+    --warn: #ffd21f;
+    --loose: #102010;
+    --bundled: #10203a;
+    --interconnect: #2a1438;
+    --radius: 0;
+    --bevel-light: #8e8eaa;
+    --bevel-dark: #07070c;
+    --chrome: linear-gradient(180deg, #3d3d52 0%, #2a2a3b 55%, #23232f 100%);
+    --gold: #cbb25a;
+    color-scheme: dark;
+    font-family: Tahoma, Verdana, Geneva, 'Segoe UI', sans-serif;
+    font-size: 12px;
+  }
+
+  :root[data-skin='winamp'] body {
+    background:
+      repeating-linear-gradient(0deg, rgb(255 255 255 / 0.015) 0 1px, transparent 1px 3px),
+      #1b1b28;
+  }
+
+  /* Window chrome */
+
+  [data-skin='winamp'] .app {
+    border: 2px solid;
+    border-color: var(--bevel-light) var(--bevel-dark) var(--bevel-dark) var(--bevel-light);
+  }
+
+  [data-skin='winamp'] .amp-titlebar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 16px;
+    padding: 0 4px;
+    background: var(--chrome);
+    border-bottom: 1px solid var(--bevel-dark);
+    flex: none;
+  }
+
+  [data-skin='winamp'] .amp-stripes {
+    flex: 1;
+    height: 7px;
+    background: repeating-linear-gradient(180deg, var(--gold) 0 1px, #5b4f22 1px 2px);
+    opacity: 0.85;
+  }
+
+  [data-skin='winamp'] .amp-title {
+    font: bold 9px Tahoma, Verdana, sans-serif;
+    letter-spacing: 3px;
+    color: #e6e6f2;
+    text-shadow: 1px 1px 0 #000;
+  }
+
+  [data-skin='winamp'] .amp-winbtns {
+    display: flex;
+    gap: 2px;
+  }
+
+  [data-skin='winamp'] .amp-winbtns i {
+    width: 9px;
+    height: 9px;
+    background: linear-gradient(180deg, #6e6e88, #3b3b4e);
+    border: 1px solid;
+    border-color: var(--bevel-light) var(--bevel-dark) var(--bevel-dark) var(--bevel-light);
+  }
+
+  [data-skin='winamp'] .topbar,
+  [data-skin='winamp'] .tabs {
+    background: var(--chrome);
+    border-bottom: 2px solid;
+    border-color: var(--bevel-dark);
+  }
+
+  [data-skin='winamp'] .brand {
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-size: 11px;
+    text-shadow: 1px 1px 0 #000;
+  }
+
+  [data-skin='winamp'] .version {
+    color: #8c8ca8;
+    letter-spacing: 0;
+  }
+
+  /* Fake LCD: time, spectrum analyzer, scrolling title, kbps / kHz */
+
+  [data-skin='winamp'] .amp-display {
+    display: flex;
+    gap: 6px;
+    flex: 0 1 430px;
+    min-width: 260px;
+    height: 44px;
+    padding: 3px;
+    background: #000;
+    border: 2px solid;
+    border-color: var(--bevel-dark) var(--bevel-light) var(--bevel-light) var(--bevel-dark);
+    font-family: Menlo, Monaco, 'Courier New', monospace;
+    color: #00ff00;
+    text-shadow: 0 0 4px rgb(0 255 0 / 0.55);
+  }
+
+  [data-skin='winamp'] .amp-lcd {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 92px;
+    flex: none;
+  }
+
+  [data-skin='winamp'] .amp-time {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 1;
+  }
+
+  [data-skin='winamp'] .amp-play {
+    font-size: 9px;
+  }
+
+  [data-skin='winamp'] .amp-colon {
+    animation: amp-blink 1s steps(1) infinite;
+  }
+
+  [data-skin='winamp'] .amp-spectrum {
+    display: flex;
+    align-items: flex-end;
+    gap: 1px;
+    height: 16px;
+  }
+
+  [data-skin='winamp'] .amp-spectrum span {
+    flex: 1;
+    height: 100%;
+    background: linear-gradient(0deg, #00c800 0%, #9be000 45%, #ffd21f 70%, #ff3c00 100%);
+    transform-origin: bottom;
+    animation: amp-bar 0.9s ease-in-out infinite alternate;
+  }
+
+  [data-skin='winamp'] .amp-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  [data-skin='winamp'] .amp-marquee {
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+
+  [data-skin='winamp'] .amp-marquee > div {
+    display: inline-flex;
+    animation: amp-scroll 14s linear infinite;
+  }
+
+  [data-skin='winamp'] .amp-marquee span {
+    white-space: pre;
+  }
+
+  [data-skin='winamp'] .amp-stats {
+    display: flex;
+    gap: 12px;
+    font-size: 9px;
+    text-transform: uppercase;
+    color: #008c00;
+    text-shadow: none;
+  }
+
+  [data-skin='winamp'] .amp-stats b {
+    color: #00ff00;
+    white-space: pre;
+  }
+
+  [data-skin='winamp'] .amp-lit {
+    color: #00ff00;
+    text-shadow: 0 0 4px rgb(0 255 0 / 0.55);
+  }
+
+  @keyframes amp-bar {
+    0% {
+      transform: scaleY(0.15);
+    }
+    40% {
+      transform: scaleY(0.8);
+    }
+    70% {
+      transform: scaleY(0.35);
+    }
+    100% {
+      transform: scaleY(1);
+    }
+  }
+
+  @keyframes amp-scroll {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @keyframes amp-blink {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  /* Buttons: classic raised bevel, pressed when active */
+
+  [data-skin='winamp'] button {
+    background: linear-gradient(180deg, #5d5d76 0%, #3a3a50 100%);
+    color: #e2e2ee;
+    border: 1px solid;
+    border-color: var(--bevel-light) var(--bevel-dark) var(--bevel-dark) var(--bevel-light);
+    border-radius: 0;
+    padding: 3px 10px;
+    font: 11px Tahoma, Verdana, sans-serif;
+    text-shadow: 1px 1px 0 #000;
+  }
+
+  [data-skin='winamp'] button:hover:not(:disabled) {
+    background: linear-gradient(180deg, #6c6c88 0%, #43435c 100%);
+  }
+
+  [data-skin='winamp'] button:active:not(:disabled) {
+    border-color: var(--bevel-dark) var(--bevel-light) var(--bevel-light) var(--bevel-dark);
+    background: #2a2a3b;
+  }
+
+  [data-skin='winamp'] button.primary {
+    color: #00ff00;
+    background: linear-gradient(180deg, #4a4a63 0%, #2c2c3e 100%);
+    text-shadow: 0 0 4px rgb(0 255 0 / 0.5);
+  }
+
+  [data-skin='winamp'] button.primary:hover:not(:disabled) {
+    filter: none;
+    background: linear-gradient(180deg, #57576f 0%, #333347 100%);
+  }
+
+  [data-skin='winamp'] button.danger {
+    color: #ff6b4a;
+  }
+
+  [data-skin='winamp'] button.icon,
+  [data-skin='winamp'] button.link,
+  [data-skin='winamp'] button.sort,
+  [data-skin='winamp'] button.tab {
+    text-shadow: none;
+  }
+
+  [data-skin='winamp'] button.sort {
+    background: none;
+    border: none;
+    padding: 7px 10px;
+    font: inherit;
+    color: inherit;
+  }
+
+  [data-skin='winamp'] button.icon {
+    background: none;
+    border: none;
+    color: #8c8ca8;
+    padding: 1px 6px;
+    font-size: 16px;
+  }
+
+  [data-skin='winamp'] button.link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #00ff00;
+    font-size: inherit;
+  }
+
+  [data-skin='winamp'] .skin-toggle[aria-pressed='true'] {
+    color: var(--gold);
+  }
+
+  /* Tabs look like the playlist editor's button strip */
+
+  [data-skin='winamp'] .tabs {
+    gap: 3px;
+    padding: 4px 8px 0;
+  }
+
+  [data-skin='winamp'] .tab {
+    border: 1px solid;
+    border-bottom: none;
+    border-color: var(--bevel-light) var(--bevel-dark) var(--bevel-dark) var(--bevel-light);
+    background: linear-gradient(180deg, #4b4b62 0%, #32324a 100%);
+    color: #b9b9cc;
+    padding: 4px 10px;
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+
+  [data-skin='winamp'] .tab:hover:not(:disabled) {
+    background: linear-gradient(180deg, #5a5a74 0%, #3b3b52 100%);
+    color: #fff;
+  }
+
+  [data-skin='winamp'] .tab.active {
+    background: #000;
+    color: #00ff00;
+    border-color: var(--bevel-light) var(--bevel-dark) #000 var(--bevel-light);
+    text-shadow: 0 0 4px rgb(0 255 0 / 0.5);
+  }
+
+  [data-skin='winamp'] .count {
+    background: #000;
+    color: #00c000;
+    border-radius: 0;
+    font-family: Menlo, Monaco, 'Courier New', monospace;
+  }
+
+  [data-skin='winamp'] .count.flagged {
+    color: var(--warn);
+    background: transparent;
+  }
+
+  /* Fields: black LCD wells with green text */
+
+  [data-skin='winamp'] input,
+  [data-skin='winamp'] select,
+  [data-skin='winamp'] textarea {
+    background: #000;
+    color: #00ff00;
+    border: 1px solid;
+    border-color: var(--bevel-dark) var(--bevel-light) var(--bevel-light) var(--bevel-dark);
+    border-radius: 0;
+    font-family: Menlo, Monaco, 'Courier New', monospace;
+    font-size: 12px;
+  }
+
+  [data-skin='winamp'] input::placeholder,
+  [data-skin='winamp'] textarea::placeholder {
+    color: #1f6a1f;
+  }
+
+  [data-skin='winamp'] input:focus,
+  [data-skin='winamp'] select:focus,
+  [data-skin='winamp'] textarea:focus,
+  [data-skin='winamp'] button:focus-visible {
+    outline: 1px dotted #00ff00;
+    outline-offset: 1px;
+  }
+
+  [data-skin='winamp'] .show-name {
+    background: #000;
+    color: #00ff00;
+  }
+
+  [data-skin='winamp'] input[type='checkbox'],
+  [data-skin='winamp'] input[type='radio'] {
+    accent-color: #00c000;
+  }
+
+  /* Headings and field labels in the skin's gold */
+
+  [data-skin='winamp'] h2 {
+    color: #e2e2ee;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  [data-skin='winamp'] h3,
+  [data-skin='winamp'] .field > span,
+  [data-skin='winamp'] .group-head {
+    color: var(--gold);
+  }
+
+  /* Tables: the playlist editor */
+
+  [data-skin='winamp'] table.grid {
+    background: #000;
+    border: 2px solid;
+    border-color: var(--bevel-dark) var(--bevel-light) var(--bevel-light) var(--bevel-dark);
+    border-radius: 0;
+    font-family: Menlo, Monaco, 'Courier New', monospace;
+    font-size: 11px;
+  }
+
+  [data-skin='winamp'] .grid th {
+    background: var(--chrome);
+    color: #c8c8da;
+    font-family: Tahoma, Verdana, sans-serif;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--bevel-dark);
+  }
+
+  [data-skin='winamp'] .grid td {
+    border-bottom: 1px solid #0a1a0a;
+  }
+
+  [data-skin='winamp'] .split .grid tbody tr:hover {
+    background: #0c0c34;
+  }
+
+  [data-skin='winamp'] .grid tbody tr.selected,
+  [data-skin='winamp'] .split .grid tbody tr.selected:hover {
+    background: #0000c6;
+  }
+
+  [data-skin='winamp'] .grid tbody tr.selected td {
+    color: #fff;
+  }
+
+  [data-skin='winamp'] .grid tr.group-row td,
+  [data-skin='winamp'] .grid tr.group-row:hover td {
+    background: #101024;
+    color: var(--gold);
+    border-top: 1px solid #23234a;
+  }
+
+  [data-skin='winamp'] .grid tr.group-row.clickable:hover td {
+    background: #18183c;
+  }
+
+  [data-skin='winamp'] .pill {
+    border-radius: 0;
+    border: 1px solid #1f4f1f;
+    color: #00ff00;
+    font-size: 10px;
+  }
+
+  [data-skin='winamp'] .sort-mark {
+    color: #00ff00;
+  }
+
+  /* Side panes, cards and dialogs read as separate Winamp windows */
+
+  [data-skin='winamp'] .editor,
+  [data-skin='winamp'] .labels-controls {
+    background: var(--surface);
+    border-left: 2px solid;
+    border-color: var(--bevel-light);
+    box-shadow: inset 1px 0 0 var(--bevel-dark);
+  }
+
+  [data-skin='winamp'] .labels-controls {
+    border-left: none;
+    border-right: 2px solid var(--bevel-dark);
+  }
+
+  [data-skin='winamp'] .editor-head {
+    background: var(--chrome);
+    border-bottom: 1px solid var(--bevel-dark);
+  }
+
+  [data-skin='winamp'] .bundle-cable,
+  [data-skin='winamp'] .print-summary,
+  [data-skin='winamp'] .notice {
+    background: #000;
+    border: 1px solid;
+    border-color: var(--bevel-dark) var(--bevel-light) var(--bevel-light) var(--bevel-dark);
+    border-radius: 0;
+  }
+
+  [data-skin='winamp'] .dialog {
+    background: var(--surface);
+    border: 2px solid;
+    border-color: var(--bevel-light) var(--bevel-dark) var(--bevel-dark) var(--bevel-light);
+    border-radius: 0;
+  }
+
+  [data-skin='winamp'] .segmented {
+    border-radius: 0;
+    border-color: var(--bevel-dark);
+  }
+
+  [data-skin='winamp'] .segmented button.active,
+  [data-skin='winamp'] .segmented button.active:hover {
+    background: #000;
+    color: #00ff00;
+    border-color: var(--bevel-dark) var(--bevel-light) var(--bevel-light) var(--bevel-dark);
+  }
+
+  [data-skin='winamp'] .swatch {
+    border-radius: 0;
+  }
+
+  [data-skin='winamp'] .chip {
+    border-radius: 0;
+  }
+
+  /* Checklist progress bars as EQ sliders */
+
+  [data-skin='winamp'] .progress-item .bar {
+    height: 8px;
+    border-radius: 0;
+    background: #000;
+    border: 1px solid;
+    border-color: var(--bevel-dark) var(--bevel-light) var(--bevel-light) var(--bevel-dark);
+  }
+
+  [data-skin='winamp'] .progress-item .bar span {
+    background: linear-gradient(90deg, #00c800 0%, #9be000 60%, #ffd21f 85%, #ff3c00 100%);
+  }
+
+  /* The label preview stays white paper, just on a darker desk */
+
+  [data-skin='winamp'] .labels-preview {
+    background: #11111c;
+  }
+
+  /* Chunky beveled scrollbars */
+
+  [data-skin='winamp'] ::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+  }
+
+  [data-skin='winamp'] ::-webkit-scrollbar-track {
+    background: #11111c;
+  }
+
+  [data-skin='winamp'] ::-webkit-scrollbar-thumb {
+    background: linear-gradient(90deg, #5d5d76, #3a3a50);
+    border: 1px solid;
+    border-color: var(--bevel-light) var(--bevel-dark) var(--bevel-dark) var(--bevel-light);
+  }
+
+  [data-skin='winamp'] ::-webkit-scrollbar-corner {
+    background: #11111c;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-skin='winamp'] .amp-spectrum span,
+    [data-skin='winamp'] .amp-marquee > div,
+    [data-skin='winamp'] .amp-colon {
+      animation: none;
+    }
+
+    [data-skin='winamp'] .amp-spectrum span {
+      transform: scaleY(0.5);
+    }
+  }
+}
+
+@media screen {
+  [data-skin='winamp'] .menu {
+    background: var(--surface);
+    border: 2px solid;
+    border-color: var(--bevel-light) var(--bevel-dark) var(--bevel-dark) var(--bevel-light);
+    border-radius: 0;
+  }
+
+  [data-skin='winamp'] .menu [role='menuitem'] {
+    background: none;
+    border: none;
+    color: #00ff00;
+    font-family: Menlo, Monaco, 'Courier New', monospace;
+    text-shadow: none;
+    border-radius: 0;
+  }
+
+  [data-skin='winamp'] .menu [role='menuitem'].danger {
+    color: #ff6b4a;
+  }
+
+  [data-skin='winamp'] .menu [role='menuitem']:hover:not(:disabled),
+  [data-skin='winamp'] .menu [role='menuitem']:focus-visible {
+    background: #0000c6;
+    color: #fff;
+  }
+
+  [data-skin='winamp'] .setup-btn.active {
+    color: #00ff00;
+    background: #000;
+    border-color: var(--bevel-dark) var(--bevel-light) var(--bevel-light) var(--bevel-dark);
+  }
+}
+
+@media screen {
+  [data-skin='winamp'] .schedule-label,
+  [data-skin='winamp'] .role-label {
+    color: var(--gold);
+  }
+
+  [data-skin='winamp'] .setup-card {
+    background: var(--surface);
+    border: 2px solid;
+    border-color: var(--bevel-light) var(--bevel-dark) var(--bevel-dark) var(--bevel-light);
+    border-radius: 0;
+  }
+
+  [data-skin='winamp'] input[type='date'] {
+    color-scheme: dark;
+  }
+}

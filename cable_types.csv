@@ -1,0 +1,100 @@
+Name,Part,Channels,End A,End B,Standard Lengths (ft),Notes
+XLR3,Cable,1,XLR3-F,XLR3-M,25;50;75;100;150;200;250,Mic/line. Also used for comms party line and LTC
+1/4in TRS,Cable,1,1/4in TRS,1/4in TRS,3;6;10;25,Balanced line
+1/4in TS,Cable,1,1/4in TS,1/4in TS,10;15;20,Instrument / unbalanced
+1/4in TRS to XLR3-M,Cable,1,1/4in TRS,XLR3-M,3;6;10;25,
+1/4in TRS to XLR3-F,Cable,1,1/4in TRS,XLR3-F,3;6;10;25,
+TT Patch,Cable,1,TT,TT,1;2;3,Bantam patch bay
+RCA,Cable,2,RCA x2,RCA x2,3;6;10,Stereo pair
+3.5mm TRS to XLR3-M x2,Cable,2,3.5mm TRS,XLR3-M x2,3;6;10,Computer / playback out
+XLR3 Turnaround F-F,Adapter,1,XLR3-F,XLR3-F,,
+XLR3 Turnaround M-M,Adapter,1,XLR3-M,XLR3-M,,
+3pr Mult,Trunk,3,Multipin,Multipin,25;50;75;100;150;200;250,
+3pr XLR-M Tail,Tail,3,Multipin,XLR3-M x3,,
+3pr XLR-F Tail,Tail,3,Multipin,XLR3-F x3,,
+6pr Mult,Trunk,6,Multipin,Multipin,25;50;75;100;150;200;250,
+6pr XLR-M Tail,Tail,6,Multipin,XLR3-M x6,,
+6pr XLR-F Tail,Tail,6,Multipin,XLR3-F x6,,
+9pr Mult,Trunk,9,Multipin,Multipin,25;50;75;100;150;200;250,
+9pr XLR-M Tail,Tail,9,Multipin,XLR3-M x9,,
+9pr XLR-F Tail,Tail,9,Multipin,XLR3-F x9,,
+11pr Mult,Trunk,11,Multipin,Multipin,25;50;75;100;150;200;250,
+11pr XLR-M Tail,Tail,11,Multipin,XLR3-M x11,,
+11pr XLR-F Tail,Tail,11,Multipin,XLR3-F x11,,
+12pr Mult,Trunk,12,Multipin,Multipin,25;50;75;100;150;200;250,e.g. DT12
+12pr XLR-M Tail,Tail,12,Multipin,XLR3-M x12,,
+12pr XLR-F Tail,Tail,12,Multipin,XLR3-F x12,,
+16pr Mult,Trunk,16,Multipin,Multipin,25;50;75;100;150;200;250,
+16pr XLR-M Tail,Tail,16,Multipin,XLR3-M x16,,
+16pr XLR-F Tail,Tail,16,Multipin,XLR3-F x16,,
+19pr Mult,Trunk,19,Multipin,Multipin,25;50;75;100;150;200;250,
+19pr XLR-M Tail,Tail,19,Multipin,XLR3-M x19,,
+19pr XLR-F Tail,Tail,19,Multipin,XLR3-F x19,,
+3pr XLR-F Stage Box Tail,Tail,3,Multipin,XLR3-F x3 (Box),,Box/panel instead of a fan
+6pr XLR-F Stage Box Tail,Tail,6,Multipin,XLR3-F x6 (Box),,Box/panel instead of a fan
+9pr XLR-F Stage Box Tail,Tail,9,Multipin,XLR3-F x9 (Box),,Box/panel instead of a fan
+11pr XLR-F Stage Box Tail,Tail,11,Multipin,XLR3-F x11 (Box),,Box/panel instead of a fan
+12pr XLR-F Stage Box Tail,Tail,12,Multipin,XLR3-F x12 (Box),,Box/panel instead of a fan
+19pr XLR-F Stage Box Tail,Tail,19,Multipin,XLR3-F x19 (Box),,Box/panel instead of a fan
+3pr XLR-M Stage Box Tail,Tail,3,Multipin,XLR3-M x3 (Box),,Box/panel instead of a fan
+6pr XLR-M Stage Box Tail,Tail,6,Multipin,XLR3-M x6 (Box),,Box/panel instead of a fan
+9pr XLR-M Stage Box Tail,Tail,9,Multipin,XLR3-M x9 (Box),,Box/panel instead of a fan
+11pr XLR-M Stage Box Tail,Tail,11,Multipin,XLR3-M x11 (Box),,Box/panel instead of a fan
+12pr XLR-M Stage Box Tail,Tail,12,Multipin,XLR3-M x12 (Box),,Box/panel instead of a fan
+19pr XLR-M Stage Box Tail,Tail,19,Multipin,XLR3-M x19 (Box),,Box/panel instead of a fan
+RG6,Cable,1,BNC,BNC,5;10;15;25;50;100;150;200;250,
+NL2,Cable,1,NL2,NL2,5;10;15;25;50;100;150;200;250,
+NL4,Trunk,2,NL4,NL4,5;10;15;25;50;100;150;200;250,2 circuits (1+/1- and 2+/2-)
+NL8,Trunk,4,NL8,NL8,5;10;15;25;50;100;150;200;250,4 circuits
+NL4 Coupler,Adapter,2,NL4,NL4,,Joins two NL4 cables
+NL4 to 2x NL2 Tail,Tail,2,NL4,NL2 x2,,1 circuit per NL2
+NL8 to 2x NL4 Tail,Tail,4,NL8,NL4 x2,,2 circuits per NL4
+NL8 to 4x NL2 Tail,Tail,4,NL8,NL2 x4,,1 circuit per NL2
+VEAM Composite,Cable,1,VEAM,VEAM,10;25;50;100,AC + audio + RMS for self-powered speakers (e.g. Meyer)
+Combo XLR3 + powerCON,Cable,1,XLR3-F + NEMA 5-15P,XLR3-M + powerCON (blue),5;10;15;25;50;100;150;200;250,Self-powered speaker feed
+Combo XLR3 + TRUE1,Cable,1,XLR3-F + NEMA 5-15P,XLR3-M + TRUE1 (F),5;10;15;25;50;100;150;200;250,Self-powered speaker feed
+AES/EBU XLR,Cable,2,XLR3-F,XLR3-M,3;10;25;50;100,110 ohm. 2 audio channels per cable
+DB25 Analog,Cable,8,DB25,DB25,3;6;10,Tascam pinout
+DB25 to XLR3-M,Cable,8,DB25,XLR3-M x8,3;6;10,Tascam pinout breakout
+DB25 to XLR3-F,Cable,8,DB25,XLR3-F x8,3;6;10,Tascam pinout breakout
+DB25 AES,Cable,8,DB25,DB25,3;6;10,AES59 pinout. 8 AES lines = 16 audio channels
+MADI Coax,Cable,1,BNC,BNC,3;10;25;50;100,75 ohm
+MADI Optical,Cable,1,SC Duplex,SC Duplex,3;10;25;50;100,Multi-mode
+Word Clock,Cable,1,BNC,BNC,1;3;10;25,75 ohm
+Euroblock to XLR3-M,Cable,1,Euroblock,XLR3-M,1;3;6,Rack I/O pigtail
+Euroblock to XLR3-F,Cable,1,Euroblock,XLR3-F,1;3;6,Rack I/O pigtail
+Cat6 etherCON,Cable,1,etherCON,etherCON,5;10;15;25;50;100;150;200;250,Max 328ft (100m)
+Cat6 RJ45 Patch,Cable,1,RJ45,RJ45,3;5;10;15;25;50,Rack patching
+etherCON Barrel,Adapter,1,etherCON,etherCON,,
+Fiber opticalCON DUO,Cable,2,opticalCON DUO,opticalCON DUO,25;50;100;150;250;500,Set single-mode or multi-mode
+Fiber opticalCON QUAD,Cable,4,opticalCON QUAD,opticalCON QUAD,25;50;100;150;250;500,Set single-mode or multi-mode
+Fiber LC Duplex Patch,Cable,2,LC Duplex,LC Duplex,1;3;6;10,
+USB A-B,Cable,1,USB-A,USB-B,3;6;10,
+USB-C,Cable,1,USB-C,USB-C,3;6,
+MIDI,Cable,1,DIN5,DIN5,3;5;10;15;25,
+RS-232,Cable,1,DB9-F,DB9-M,3;5;10;15;25,Show control
+RG8X,Cable,1,BNC,BNC,10;25;50;100,Antenna coax. Loss depends on length
+RG58,Cable,1,BNC,BNC,1;3;10;25,Short antenna runs and jumpers
+RG213,Cable,1,N,N,5;10;15;25;50;100;150;200;250,Low-loss long runs
+LMR-400,Cable,1,N,N,25;50;100;150,Lowest loss
+BNC Barrel,Adapter,1,BNC,BNC,,
+N to BNC Adapter,Adapter,1,N,BNC,,
+XLR4 Headset Extension,Cable,1,XLR4-F,XLR4-M,10;25,Comms
+HDMI,Cable,1,HDMI,HDMI,3;6;10;25,
+Edison 5-15,Cable,1,NEMA 5-15P,NEMA 5-15R,3;6;10;25;50;100,
+Edison 5-20,Cable,1,NEMA 5-20P,NEMA 5-20R,3;6;10;25;50;100,
+Edison Quad Box,Cable,4,NEMA 5-15P,NEMA 5-15R x4,10;25;50,
+IEC C13 Power Cord,Cable,1,NEMA 5-15P,IEC C13,3;6;10,
+IEC C14-C13 Jumper,Cable,1,IEC C14,IEC C13,1;2;3;6,Rack power
+IEC C20-C19 Jumper,Cable,1,IEC C20,IEC C19,1;2;3;6,Rack power
+Edison to powerCON,Cable,1,NEMA 5-15P,powerCON (blue),3;6;10;25;50,
+powerCON Link,Cable,1,powerCON (grey),powerCON (blue),5;10;15;25;50;100;150;200;250,
+Edison to TRUE1,Cable,1,NEMA 5-15P,TRUE1 (F),3;6;10;25;50,
+TRUE1 Link,Cable,1,TRUE1 (M),TRUE1 (F),3;6;10;25,
+L5-20 Twistlock,Cable,1,L5-20P,L5-20R,10;25;50;100,
+L5-30 Twistlock,Cable,1,L5-30P,L5-30R,10;25;50;100,
+L6-30 Twistlock,Cable,1,L6-30P,L6-30R,10;25;50;100,208V
+L21-30 Twistlock,Cable,1,L21-30P,L21-30R,5;10;15;25;50;100;150;200;250,3-phase
+Socapex Power Mult,Trunk,6,Socapex 19-pin,Socapex 19-pin,25;50;100;150,6 circuits
+Socapex Breakout Tail,Tail,6,Socapex 19-pin,NEMA 5-20R x6,,
+Cam-Lok Feeder,Cable,1,Cam-Lok,Cam-Lok,25;50;100,Only if audio owns its distro. Set of 5 (L1 L2 L3 N G)
