@@ -199,6 +199,20 @@ export function connectorsOn(tail: CableType, circuits: number): number {
   return count > 0 && count < circuits && circuits % count === 0 ? count : circuits
 }
 
+// How many connectors are on a cable's end, as both the editor and the labels see it:
+// a trunk end with a tail has that tail's connectors, a trunk end without one has just
+// its own connector, and a plain cable end has whatever its connector says.
+export function endConnectors(show: Show, cable: Cable, end: 'A' | 'B'): number {
+  const type = typeById(show, cable.typeId)
+  const circuits = visibleTails(show, cable).length
+  if (!type) return circuits
+  if (type.part === 'Trunk') {
+    const tail = typeById(show, end === 'A' ? cable.tailATypeId : cable.tailBTypeId)
+    return tail ? connectorsOn(tail, circuits) : 1
+  }
+  return connectorCount(end === 'A' ? type.endA : type.endB, circuits)
+}
+
 // How many connectors are on a plain cable's end: "XLR3-M x8" is 8, a lone "NL4" is 1.
 // A count that doesn't divide the circuits evenly falls back to one per circuit.
 function connectorCount(connector: string, circuits: number): number {
@@ -220,7 +234,7 @@ function fold(labels: TailLabel[], connectors: number, key: string): TailLabel[]
         number: null,
         tailName: '',
         single: true,
-        patch: [...new Set(labels.map((l) => l.patch).filter(Boolean))].join(' / '),
+        patch: labels[0].patch,
       },
     ]
   }
@@ -244,7 +258,8 @@ function byConnector(labels: TailLabel[], connectors: number, key: string): Tail
         .map((l) => l.tailName)
         .filter(Boolean)
         .join(' / '),
-      patch: [...new Set(part.map((l) => l.patch).filter(Boolean))].join(' / '),
+      // Patch cells fill from the top, one per connector: connector k's is on row k.
+      patch: labels[k].patch,
     }
   })
 }

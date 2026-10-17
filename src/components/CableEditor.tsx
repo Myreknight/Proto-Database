@@ -15,7 +15,7 @@ import {
   rackById,
   setCableColor,
   unlinkCable,
-  setTailField,
+  setTailCells,
   type TailField,
   tailOptions,
   typeById,
@@ -24,6 +24,7 @@ import {
 } from '../show'
 import { DEPLOYMENTS, type Cable, type Deployment, type Show } from '../types'
 import { CABLE_COLORS, colorName } from '../colors'
+import { endConnectors } from '../labels'
 import { LengthDialog } from './LengthDialog'
 import { PromptDialog } from './PromptDialog'
 
@@ -98,6 +99,25 @@ export function CableEditor({ show, cable, update, onClose, onSelect }: Props) {
   const focusTail = (field: TailField, index: number) =>
     document.querySelector<HTMLInputElement>(`[data-tail="${field}-${index}"]`)?.focus()
 
+  // Patch cells follow the connectors on each end, not the circuits, and fill from the
+  // top: an NL8 with 2x NL4 on End A has Patch A cells on rows 1–2 only (one per NL4),
+  // while 4x NL2 on End B fills rows 1–4. Names stay one per circuit.
+  const countA = Math.min(tails.length, endConnectors(show, cable, 'A'))
+  const countB = Math.min(tails.length, endConnectors(show, cable, 'B'))
+  const countOf = (field: TailField) => (field === 'patchA' ? countA : field === 'patchB' ? countB : tails.length)
+  // The rows a column's cells sit on, from one row onward (optionally stopping at another).
+  const cellRows = (field: TailField, from: number, to = countOf(field) - 1) => {
+    const rows: number[] = []
+    for (let r = from; r <= Math.min(to, countOf(field) - 1); r++) rows.push(r)
+    return rows
+  }
+  // On an end where each connector carries several circuits, a cell's hint says which.
+  const patchHint = (field: 'patchA' | 'patchB', i: number, example: string) => {
+    const per = tails.length / countOf(field)
+    if (per > 1 && countOf(field) > 1) return `Circuits ${i * per + 1}–${(i + 1) * per}`
+    return i === 0 ? example : ''
+  }
+
   const range = sel ? { lo: Math.min(sel.anchor, sel.focus), hi: Math.max(sel.anchor, sel.focus) } : null
   const multi = !!range && range.hi > range.lo
   const inRange = (field: TailField, i: number) => !!sel && sel.field === field && !!range && i >= range.lo && i <= range.hi
@@ -105,15 +125,17 @@ export function CableEditor({ show, cable, update, onClose, onSelect }: Props) {
   // Writes one value into every selected cell, or a list of values down from the top of the selection.
   const fillRange = (values: string[]) => {
     if (!sel || !range) return
-    const count = range.hi - range.lo + 1
-    const list = values.length === 1 ? Array(count).fill(values[0]) : values
-    patch((c, s) => setTailField(s, c, sel.field, range.lo, list))
+    const selected = cellRows(sel.field, range.lo, range.hi)
+    const rows = values.length === 1 ? selected : cellRows(sel.field, range.lo).slice(0, Math.max(selected.length, values.length))
+    const list = values.length === 1 ? Array(rows.length).fill(values[0]) : values
+    patch((c, s) => setTailCells(s, c, sel.field, rows, list))
   }
 
-  const rangeText = () => (sel && range ? tails.slice(range.lo, range.hi + 1).map((t) => t[sel.field]).join('\n') : '')
+  const rangeText = () =>
+    sel && range ? cellRows(sel.field, range.lo, range.hi).map((r) => tails[r][sel.field]).join('\n') : ''
 
   const moveTo = (field: TailField, index: number, extend: boolean) => {
-    if (index < 0 || index >= tails.length) return
+    if (index < 0 || index >= countOf(field)) return
     setSel((prev) =>
       extend && prev?.field === field ? { ...prev, focus: index } : { field, anchor: index, focus: index },
     )
@@ -125,7 +147,7 @@ export function CableEditor({ show, cable, update, onClose, onSelect }: Props) {
       data-tail={`${field}-${i}`}
       className={multi && inRange(field, i) ? 'in-range' : undefined}
       value={tails[i][field]}
-      placeholder={i === 0 ? placeholder : ''}
+      placeholder={placeholder}
       onMouseDown={(e) => {
         // Shift-click extends down the column instead of selecting text.
         if (e.shiftKey && sel?.field === field) {
@@ -144,7 +166,7 @@ export function CableEditor({ show, cable, update, onClose, onSelect }: Props) {
       }
       onChange={(e) => {
         setSel({ field, anchor: i, focus: i })
-        patch((c, s) => setTailField(s, c, field, i, [e.target.value]))
+        patch((c, s) => setTailCells(s, c, field, [i], [e.target.value]))
       }}
       onPaste={(e) => {
         const lines = e.clipboardData.getData('text').split(/\r?\n/)
@@ -152,7 +174,7 @@ export function CableEditor({ show, cable, update, onClose, onSelect }: Props) {
         if (!multi && lines.length < 2) return
         e.preventDefault()
         if (multi) fillRange(lines.map((l) => l.trim()))
-        else patch((c, s) => setTailField(s, c, field, i, lines.map((l) => l.trim())))
+        else patch((c, s) => setTailCells(s, c, field, cellRows(field, i), lines.map((l) => l.trim())))
       }}
       onCopy={(e) => {
         if (!multi) return
@@ -517,8 +539,9 @@ export function CableEditor({ show, cable, update, onClose, onSelect }: Props) {
           Tails <span className="muted">({tails.length})</span>
         </h3>
         <p className="muted small">
-          Patch A is where each tail plugs in at End A (the From location), Patch B at End B (the To location);
-          it prints after the arrow on that end's labels.
+          Patch A is where each connector plugs in at End A (the From location), Patch B at End B (the To location),
+          so each Patch column has one cell per connector on that end, filling from the top. It prints after the arrow on
+          that end's labels.
           Paste a list into any column to fill the tails below it. Shift-click down a column to select
           several cells, then paste to fill them or press Delete to clear them.
         </p>
@@ -544,9 +567,9 @@ export function CableEditor({ show, cable, update, onClose, onSelect }: Props) {
             {tails.map((t, i) => (
               <tr key={t.number}>
                 <td className="num muted">{t.number}</td>
-                <td>{tailInput('name', i, 'e.g. Main HL')}</td>
-                <td>{tailInput('patchA', i, 'e.g. Amp 1-A')}</td>
-                <td>{tailInput('patchB', i, 'e.g. AR133-1 - out')}</td>
+                <td>{tailInput('name', i, i === 0 ? 'e.g. Main HL' : '')}</td>
+                <td>{i < countA && tailInput('patchA', i, patchHint('patchA', i, 'e.g. Amp 1-A'))}</td>
+                <td>{i < countB && tailInput('patchB', i, patchHint('patchB', i, 'e.g. AR133-1 - out'))}</td>
               </tr>
             ))}
           </tbody>

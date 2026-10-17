@@ -274,18 +274,13 @@ export function visibleTails(show: Show, cable: Cable): Tail[] {
 
 export type TailField = 'name' | 'patchA' | 'patchB'
 
-// Writes one field starting at a tail index; a multi-line paste fills the tails below it.
-export function setTailField(
-  show: Show,
-  cable: Cable,
-  field: TailField,
-  start: number,
-  values: string[],
-): Cable {
+// Writes values into particular tails (rows), e.g. every other row when each connector
+// on an end covers two circuits.
+export function setTailCells(show: Show, cable: Cable, field: TailField, rows: number[], values: string[]): Cable {
   const count = channelCount(show, cable)
   const tails = resizeTails(cable.tails, Math.max(count, cable.tails.length))
-  values.forEach((value, i) => {
-    if (start + i < count) tails[start + i] = { ...tails[start + i], [field]: value }
+  rows.forEach((row, i) => {
+    if (row < count && i < values.length) tails[row] = { ...tails[row], [field]: values[i] }
   })
   return { ...cable, tails }
 }
