@@ -53,6 +53,15 @@ export interface Cable {
   color: string | null
   // Which end got the flag when bundling, so every cable's same end lands together.
   flagEnd: 'A' | 'B' | null
+  // Ends mounted in a steck: the rack panel where internal wiring meets a bundle. For a
+  // trunk with a tail at that end, it's the tail's multipin side that mounts. Each one
+  // prints a steck label.
+  steckA: boolean
+  steckB: boolean
+  // Cables that make up one signal path (interconnect → steck → bundled cable → steck →
+  // interconnect) share a link id; linkOrder is this cable's place in that path.
+  linkId: string | null
+  linkOrder: number
   notes: string
 }
 

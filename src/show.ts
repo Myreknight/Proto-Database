@@ -144,6 +144,10 @@ export function normalizeShow(raw: unknown): Show {
       })),
       color: softenColor(c.color ?? null),
       flagEnd: c.flagEnd === 'A' || c.flagEnd === 'B' ? c.flagEnd : null,
+      steckA: c.steckA === true,
+      steckB: c.steckB === true,
+      linkId: typeof c.linkId === 'string' ? c.linkId : null,
+      linkOrder: typeof c.linkOrder === 'number' ? c.linkOrder : 0,
       notes: c.notes ?? '',
     }
   })
@@ -237,6 +241,10 @@ export function newCable(show: Show, overrides: Partial<Cable> = {}): Cable {
     tails: [],
     color: null,
     flagEnd: null,
+    steckA: false,
+    steckB: false,
+    linkId: null,
+    linkOrder: 0,
     notes: '',
     ...overrides,
   }
@@ -285,10 +293,71 @@ export function setTailField(
 export function duplicateCable(cable: Cable): Cable {
   return {
     ...cable,
+    // A copy starts outside any linked path.
+    linkId: null,
+    linkOrder: 0,
     id: newId(),
     name: cable.name ? `${cable.name} copy` : '',
     segments: cable.segments.map((g) => ({ ...g, id: newId() })),
     tails: cable.tails.map((t) => ({ ...t })),
+  }
+}
+
+// --- Linked cables: one signal path made of several cables ----------------------
+
+// The other cables in this cable's path, plus this one, in path order. Empty when
+// it isn't linked to anything.
+export function linkedCables(show: Show, cable: Cable): Cable[] {
+  if (!cable.linkId) return []
+  const members = show.cables.filter((c) => c.linkId === cable.linkId)
+  if (members.length < 2) return []
+  return [...members].sort((a, b) => a.linkOrder - b.linkOrder)
+}
+
+// Adds a cable to the end of this cable's path. It takes this cable's name and color
+// (both can still be changed afterwards; the color stays shared).
+export function linkCable(show: Show, cableId: string, otherId: string): Show {
+  const cable = show.cables.find((c) => c.id === cableId)
+  if (!cable || cableId === otherId) return show
+  const linkId = cable.linkId ?? newId()
+  const order = Math.max(0, ...show.cables.filter((c) => c.linkId === linkId).map((c) => c.linkOrder))
+  return {
+    ...show,
+    cables: show.cables.map((c) => {
+      if (c.id === cableId && !c.linkId) return { ...c, linkId, linkOrder: 0 }
+      if (c.id === otherId) return { ...c, linkId, linkOrder: order + 1, name: cable.name, color: cable.color }
+      return c
+    }),
+  }
+}
+
+export function unlinkCable(show: Show, cableId: string): Show {
+  return { ...show, cables: show.cables.map((c) => (c.id === cableId ? { ...c, linkId: null, linkOrder: 0 } : c)) }
+}
+
+// Moves a cable one place earlier (-1) or later (+1) in its path.
+export function moveInLink(show: Show, cableId: string, step: -1 | 1): Show {
+  const cable = show.cables.find((c) => c.id === cableId)
+  if (!cable) return show
+  const path = linkedCables(show, cable)
+  const at = path.findIndex((c) => c.id === cableId)
+  const other = path[at + step]
+  if (!other) return show
+  // Renumber the whole path so equal or missing orders can't get stuck.
+  const order = new Map(path.map((c, i) => [c.id, i]))
+  order.set(cableId, at + step)
+  order.set(other.id, at)
+  return { ...show, cables: show.cables.map((c) => (order.has(c.id) ? { ...c, linkOrder: order.get(c.id)! } : c)) }
+}
+
+// Color is shared along a path: setting it on one sets it on all.
+export function setCableColor(show: Show, cableId: string, color: string | null): Show {
+  const cable = show.cables.find((c) => c.id === cableId)
+  if (!cable) return show
+  const linked = new Set(linkedCables(show, cable).map((c) => c.id))
+  return {
+    ...show,
+    cables: show.cables.map((c) => (c.id === cableId || linked.has(c.id) ? { ...c, color } : c)),
   }
 }
 

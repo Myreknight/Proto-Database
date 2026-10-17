@@ -8,7 +8,13 @@ import {
   ensureRack,
   joinBundle,
   joinRack,
+  linkCable,
+  linkedCables,
+  moveInLink,
+  newCable,
   rackById,
+  setCableColor,
+  unlinkCable,
   setTailField,
   type TailField,
   tailOptions,
@@ -184,6 +190,32 @@ export function CableEditor({ show, cable, update, onClose, onSelect }: Props) {
     onClose()
   }
 
+  const setColor = (color: string | null) => update((s) => setCableColor(s, cable.id, color))
+
+  // The path this cable is part of, and what it says about where each piece runs.
+  const path = linkedCables(show, cable)
+  const where = (c: typeof cable) => {
+    const rackName = c.deployment === 'interconnect' ? rackById(show, c.rackId)?.name : undefined
+    const bundleName = bundleById(show, c.bundleId)?.name
+    return rackName ? `Rack · ${rackName}` : bundleName ? `Bundle · ${bundleName}` : [c.from, c.to].filter(Boolean).join(' → ')
+  }
+  const linkable = show.cables.filter((c) => c.id !== cable.id && !path.some((p) => p.id === c.id))
+
+  const addLinked = (otherId: string) => update((s) => linkCable(s, cable.id, otherId))
+
+  // A fresh cable of the same type that joins this path, opened in the editor.
+  const newLinked = () => {
+    const created = newCable(show, { typeId: cable.typeId, name: cable.name, color: cable.color })
+    update((s) => linkCable({ ...s, cables: [...s.cables, created] }, cable.id, created.id))
+    onSelect(created.id)
+  }
+
+  const applyNameToLinked = () =>
+    update((s) => ({
+      ...s,
+      cables: s.cables.map((c) => (path.some((p) => p.id === c.id) ? { ...c, name: cable.name } : c)),
+    }))
+
   const duplicate = () => {
     const copy = duplicateCable(cable)
     update((s) => ({ ...s, cables: [...s.cables, copy] }))
@@ -323,7 +355,7 @@ export function CableEditor({ show, cable, update, onClose, onSelect }: Props) {
               className={cable.color ? 'swatch none' : 'swatch none active'}
               title="No color"
               aria-label="No color"
-              onClick={() => patch((c) => ({ ...c, color: null }))}
+              onClick={() => setColor(null)}
             />
             {CABLE_COLORS.map((col) => (
               <button
@@ -332,7 +364,7 @@ export function CableEditor({ show, cable, update, onClose, onSelect }: Props) {
                 style={{ background: col.hex }}
                 title={col.name}
                 aria-label={col.name}
-                onClick={() => patch((c) => ({ ...c, color: col.hex }))}
+                onClick={() => setColor(col.hex)}
               />
             ))}
             <label className="swatch custom" title="Custom color">
@@ -340,7 +372,7 @@ export function CableEditor({ show, cable, update, onClose, onSelect }: Props) {
                 type="color"
                 aria-label="Custom color"
                 value={cable.color ?? '#cccccc'}
-                onChange={(e) => patch((c) => ({ ...c, color: e.target.value }))}
+                onChange={(e) => setColor(e.target.value)}
               />
             </label>
           </div>
@@ -365,6 +397,87 @@ export function CableEditor({ show, cable, update, onClose, onSelect }: Props) {
               onChange={(e) => patch((c) => ({ ...c, to: e.target.value }))}
             />
           </label>
+        </div>
+
+        <div className="row2 steck-row">
+          {(['A', 'B'] as const).map((end) => {
+            const key = end === 'A' ? 'steckA' : 'steckB'
+            return (
+              <label key={end} className="check inline small" title="This end mounts in a steck; prints a steck label">
+                <input type="checkbox" checked={cable[key]} onChange={(e) => patch((c) => ({ ...c, [key]: e.target.checked }))} />
+                <span className="clip-label">{endLabel(`Steck · End ${end}`, end)}</span>
+              </label>
+            )
+          })}
+        </div>
+
+        <h3>
+          🔗 Linked cables{path.length > 0 && <span className="muted"> ({path.length})</span>}
+        </h3>
+        {path.length > 0 ? (
+          <>
+            <p className="muted small">
+              One signal path. Cables join with this cable's name and color; names can be changed, and the color stays shared.
+            </p>
+            <ol className="link-path">
+              {path.map((c, i) => (
+                <li key={c.id} className={c.id === cable.id ? 'current' : undefined}>
+                  <span className="num muted">{i + 1}</span>
+                  <span className="link-name">
+                    {c.color && <span className="dot" style={{ background: c.color }} />}
+                    {c.id === cable.id ? (
+                      <strong>{c.name || 'Unnamed'}</strong>
+                    ) : (
+                      <button className="link" onClick={() => onSelect(c.id)} title="Open this cable">
+                        {c.name || 'Unnamed'}
+                      </button>
+                    )}
+                    <span className="muted small">
+                      {' · '}
+                      {typeById(show, c.typeId)?.name ?? 'Missing type'}
+                      {where(c) && ` · ${where(c)}`}
+                    </span>
+                  </span>
+                  <span className="link-actions">
+                    <button className="icon" disabled={i === 0} aria-label="Move earlier" title="Move earlier" onClick={() => update((s) => moveInLink(s, c.id, -1))}>
+                      ↑
+                    </button>
+                    <button
+                      className="icon"
+                      disabled={i === path.length - 1}
+                      aria-label="Move later"
+                      title="Move later"
+                      onClick={() => update((s) => moveInLink(s, c.id, 1))}
+                    >
+                      ↓
+                    </button>
+                    <button className="icon" aria-label={`Unlink ${c.name || 'cable'}`} title="Unlink" onClick={() => update((s) => unlinkCable(s, c.id))}>
+                      ×
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </>
+        ) : (
+          <p className="muted small">Not linked. Link the cables that make one signal path, e.g. interconnect → bundled cable → interconnect.</p>
+        )}
+        <div className="link-controls">
+          <select value="" onChange={(e) => e.target.value && addLinked(e.target.value)} disabled={linkable.length === 0}>
+            <option value="">Add linked cable…</option>
+            {linkable.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name || 'Unnamed'}
+                {c.linkId && linkedCables(show, c).length ? ' (leaves its current path)' : ''}
+              </option>
+            ))}
+          </select>
+          <button onClick={newLinked}>+ New linked cable</button>
+          {path.length > 0 && (
+            <button onClick={applyNameToLinked} title="Give every cable in this path this cable's name">
+              Apply name to linked
+            </button>
+          )}
         </div>
 
         <h3>Length</h3>

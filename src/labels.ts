@@ -1,5 +1,5 @@
 import { bundleById, cableRack, hasTails, typeById, visibleTails } from './show'
-import type { Cable, Show } from './types'
+import type { Cable, CableType, Show, Tail } from './types'
 
 export type SheetId = 'avery5167' | 'avery5160'
 
@@ -58,14 +58,15 @@ export const SHEETS: Record<SheetId, SheetSpec> = {
   },
 }
 
-export type LabelSet = 'tail' | 'cable'
+export type LabelSet = 'tail' | 'cable' | 'steck'
 
 export interface TailLabel {
   kind: 'tail'
   key: string
   cableName: string
   color: string | null
-  number: number | null
+  // The tail's number, or a range like "1–2" when one connector carries several circuits.
+  number: string | null
   tailName: string
   gender: Gender | null
   patch: string
@@ -74,20 +75,22 @@ export interface TailLabel {
   single: boolean
   group: string
   location: string
+  // Which extension piece this label is on (1 = Ext 1), or null for the main piece.
+  ext: number | null
 }
 
-// Mult pieces and tail blocks: the cable name over a couple of detail lines.
-export interface CableLabel {
-  kind: 'cable'
+// Goes on the multipin end of a fan or box: the cable name over the tail type and location.
+export interface BlockLabel {
+  kind: 'block'
   key: string
   cableName: string
   color: string | null
   lines: string[]
 }
 
-// Goes on the multipin end of a fan or box: the cable name over the tail type and location.
-export interface BlockLabel {
-  kind: 'block'
+// Goes on a steck: the cable name over where the steck is and what mounts in it.
+export interface SteckLabel {
+  kind: 'steck'
   key: string
   cableName: string
   color: string | null
@@ -103,7 +106,7 @@ export interface HeaderLabel {
   lines: string[]
 }
 
-export type Label = TailLabel | CableLabel | BlockLabel | HeaderLabel
+export type Label = TailLabel | BlockLabel | SteckLabel | HeaderLabel
 
 export type Gender = 'Male' | 'Female'
 
@@ -127,23 +130,22 @@ export interface LabelSettings {
   sheets: Record<LabelSet, SheetId>
   fill: Record<LabelSet, FillOrder>
   tailLayout: TailLayout
-  headers: boolean
+  headers: Record<LabelSet, boolean>
   offsetX: number
   offsetY: number
   perPiece: 1 | 2
-  includeSingles: boolean
   outlines: boolean
 }
 
 export const DEFAULT_LABEL_SETTINGS: LabelSettings = {
-  sheets: { tail: 'avery5167', cable: 'avery5160' },
-  fill: { tail: 'down', cable: 'across' },
+  sheets: { tail: 'avery5167', cable: 'avery5160', steck: 'avery5160' },
+  fill: { tail: 'down', cable: 'across', steck: 'across' },
   tailLayout: 'stacked',
-  headers: true,
+  // Most cables have one or two steck labels, so steck sets skip the header by default.
+  headers: { tail: true, cable: true, steck: false },
   offsetX: 0,
   offsetY: 0,
   perPiece: 2,
-  includeSingles: false,
   outlines: false,
 }
 
@@ -159,6 +161,11 @@ export function loadLabelSettings(): LabelSettings {
         ...raw,
         sheets: { ...DEFAULT_LABEL_SETTINGS.sheets, ...raw.sheets },
         fill: { ...DEFAULT_LABEL_SETTINGS.fill, ...raw.fill },
+        // Older settings had one header switch for every set.
+        headers:
+          typeof raw.headers === 'boolean'
+            ? { tail: raw.headers, cable: raw.headers, steck: false }
+            : { ...DEFAULT_LABEL_SETTINGS.headers, ...raw.headers },
       }
     }
   } catch {
@@ -184,39 +191,94 @@ export interface LabelGroup {
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
-// Tail sets: on a trunk, one per end with a tail (fan or box): its block label, then one
-// label per tail with the gender of the fan side. On a plain cable, one set covering
-// both ends of every piece, with the gender of that end's connector. Patch points only
-// print on the run's outer ends, not where an extension joins.
-export function tailGroups(show: Show, cable: Cable): LabelGroup[] {
+// How many connectors a tail's fan side has ("NL4 x2" is 2), when that's fewer than
+// the trunk's circuits and splits them evenly. Otherwise it's one per circuit.
+export function connectorsOn(tail: CableType, circuits: number): number {
+  const match = /x\s*(\d+)/i.exec(tail.endB)
+  const count = match ? Number(match[1]) : circuits
+  return count > 0 && count < circuits && circuits % count === 0 ? count : circuits
+}
+
+// How many connectors are on a plain cable's end: "XLR3-M x8" is 8, a lone "NL4" is 1.
+// A count that doesn't divide the circuits evenly falls back to one per circuit.
+function connectorCount(connector: string, circuits: number): number {
+  const match = /x\s*(\d+)/i.exec(connector)
+  const count = match ? Number(match[1]) : 1
+  return count > 0 && count < circuits && circuits % count === 0 ? count : circuits
+}
+
+// One label per connector. A single connector carrying several circuits prints as a
+// single-cable label (the cable name, its bundle and location); several connectors
+// each list their circuits.
+function fold(labels: TailLabel[], connectors: number, key: string): TailLabel[] {
+  if (connectors >= labels.length) return labels
+  if (connectors === 1) {
+    return [
+      {
+        ...labels[0],
+        key: `${key}-connector`,
+        number: null,
+        tailName: '',
+        single: true,
+        patch: [...new Set(labels.map((l) => l.patch).filter(Boolean))].join(' / '),
+      },
+    ]
+  }
+  return byConnector(labels, connectors, key)
+}
+
+// Folds per-circuit labels into one per connector: an NL8's 2x NL4 end prints
+// "1–2 · Sub HL / Sub HR" and "3–4 · …" rather than four labels.
+function byConnector(labels: TailLabel[], connectors: number, key: string): TailLabel[] {
+  if (connectors >= labels.length) return labels
+  const per = labels.length / connectors
+  return Array.from({ length: connectors }, (_, k) => {
+    const part = labels.slice(k * per, (k + 1) * per)
+    const first = part[0]
+    const last = part[part.length - 1]
+    return {
+      ...first,
+      key: `${key}-connector-${k + 1}`,
+      number: first.number && last.number ? `${first.number}–${last.number}` : first.number,
+      tailName: part
+        .map((l) => l.tailName)
+        .filter(Boolean)
+        .join(' / '),
+      patch: [...new Set(part.map((l) => l.patch).filter(Boolean))].join(' / '),
+    }
+  })
+}
+
+// What every label for a cable shares, and builders for its end, tail and header labels.
+function labelContext(show: Show, cable: Cable) {
   const type = typeById(show, cable.typeId)
   const tails = visibleTails(show, cable)
   const numbered = tails.length > 1
   const cableName = cable.name.trim() || 'Unnamed'
-  const group = bundleById(show, cable.bundleId)?.name ?? cableRack(show, cable)?.name
-  const trunkWithTails = type?.part === 'Trunk' && hasTails(cable)
-  const single = !trunkWithTails && tails.length === 1
+  const group = bundleById(show, cable.bundleId)?.name ?? cableRack(show, cable)?.name ?? ''
   // Ends between an extension and the piece before it are mid-run, so they get no
   // location or patch point; only the run's outer ends do.
   const make = (
     prefix: string,
     connector: string,
     outerEnd: 'A' | 'B' | null,
-    list = tails,
-    asSingle = single,
+    list: Tail[],
+    single: boolean,
+    ext: number | null,
   ): TailLabel[] =>
     list.map((t) => ({
       kind: 'tail',
       key: `${prefix}-${t.number}`,
       cableName,
       color: cable.color,
-      number: numbered ? t.number : null,
+      number: numbered ? String(t.number) : null,
       tailName: t.name.trim(),
       gender: genderOf(connector),
       patch: (outerEnd === 'A' ? t.patchA : outerEnd === 'B' ? t.patchB : '').trim(),
-      single: asSingle,
-      group: group ?? '',
+      single,
+      group,
       location: (outerEnd === 'A' ? cable.from : outerEnd === 'B' ? cable.to : '').trim(),
+      ext,
     }))
   const header = (key: string, lines: string[]): HeaderLabel => ({
     kind: 'header',
@@ -225,101 +287,112 @@ export function tailGroups(show: Show, cable: Cable): LabelGroup[] {
     color: cable.color,
     lines: lines.filter(Boolean),
   })
-
-  if (trunkWithTails) {
-    return (['A', 'B'] as const).flatMap((end) => {
-      const tail = typeById(show, end === 'A' ? cable.tailATypeId : cable.tailBTypeId)
-      const key = `${cable.id}-${end}`
-      const where = end === 'A' ? cable.from : cable.to
-      // The end without a breakout is the trunk's own connector (an NL8 into an amp):
-      // one single-cable label for it.
-      if (!tail) {
-        const plain = make(key, end === 'A' ? type.endA : type.endB, end, tails.slice(0, 1), true)
-        return [
-          {
-            key,
-            header: header(key, [
-              [`End ${end}`, where].filter(Boolean).join(' · '),
-              [type.name, group].filter(Boolean).join(' · '),
-            ]),
-            labels: plain.map((l) => ({ ...l, number: null, key: `${key}-plain` })),
-          },
-        ]
-      }
-      const block: BlockLabel = {
-        kind: 'block',
-        key: `${key}-block`,
-        cableName,
-        color: cable.color,
-        lines: [tail.name, where].filter(Boolean),
-      }
-      return [
-        {
-          key,
-          header: header(key, [
-            [`End ${end}`, where].filter(Boolean).join(' · '),
-            [plural(tails.length, 'tail'), group].filter(Boolean).join(' · '),
-          ]),
-          labels: [block, ...make(key, tail.endB, end)],
-        },
-      ]
-    })
-  }
-
-  const last = cable.segments.length - 1
-  const labels = cable.segments.flatMap((g, i) => [
-    ...make(`${cable.id}-${g.id}-A`, type?.endA ?? '', i === 0 ? 'A' : null),
-    ...make(`${cable.id}-${g.id}-B`, type?.endB ?? '', i === last ? 'B' : null),
-  ])
-  if (!labels.length) return []
-  return [
-    {
-      key: cable.id,
-      header: header(cable.id, [
-        [type?.name, plural(labels.length, 'label')].filter(Boolean).join(' · '),
-        [[cable.from, cable.to].filter(Boolean).join(' → '), group].filter(Boolean).join(' · '),
-      ]),
-      labels,
-    },
-  ]
+  return { type, tails, cableName, group, make, header }
 }
 
-// Cable sets: one per cable, a label for each trunk piece (main and extensions).
-// Tail blocks print with the tail labels.
-export function cableGroups(show: Show, cable: Cable, settings: LabelSettings): LabelGroup[] {
-  const type = typeById(show, cable.typeId)
-  if (!type) return []
-  if (type.part !== 'Trunk' && !settings.includeSingles) return []
-
-  const cableName = cable.name.trim() || 'Unnamed'
-  const route = [cable.from, cable.to].filter(Boolean).join(' → ')
-  const group = bundleById(show, cable.bundleId)?.name ?? cableRack(show, cable)?.name
-  const detail = [route, group].filter(Boolean).join(' · ')
-
-  const labels: CableLabel[] = cable.segments.flatMap((g, i) => {
-    const sub = [type.name, g.length != null ? `${g.length}'` : '', g.extension ? `Ext ${i}` : '']
-      .filter(Boolean)
-      .join(' · ')
-    return Array.from({ length: settings.perPiece }, (_, n) => ({
-      kind: 'cable' as const,
-      key: `${cable.id}-${g.id}-${n}`,
+// Tail sets: only tails picked from a trunk's tail menus. Each end with a tail (fan or
+// box) gets its block label, then one label per connector on its fan side, with that
+// side's gender. The cable's own ends, single cables and extensions print as cable labels.
+export function tailGroups(show: Show, cable: Cable): LabelGroup[] {
+  const { type, tails, cableName, group, make, header } = labelContext(show, cable)
+  if (type?.part !== 'Trunk' || !hasTails(cable)) return []
+  return (['A', 'B'] as const).flatMap((end) => {
+    const tail = typeById(show, end === 'A' ? cable.tailATypeId : cable.tailBTypeId)
+    if (!tail) return []
+    const key = `${cable.id}-${end}`
+    const where = end === 'A' ? cable.from : cable.to
+    const block: BlockLabel = {
+      kind: 'block',
+      key: `${key}-block`,
       cableName,
       color: cable.color,
-      lines: [sub, detail].filter(Boolean),
-    }))
+      lines: [tail.name, where].filter(Boolean),
+    }
+    const connectors = connectorsOn(tail, tails.length)
+    return [
+      {
+        key,
+        header: header(key, [
+          [`End ${end}`, where].filter(Boolean).join(' · '),
+          [connectors < tails.length ? `${plural(connectors, 'tail')} (${tails.length} circuits)` : plural(tails.length, 'tail'), group]
+            .filter(Boolean)
+            .join(' · '),
+        ]),
+        labels: [block, ...byConnector(make(key, tail.endB, end, tails, false, null), connectors, key)],
+      },
+    ]
+  })
+}
+
+// Cable sets: every cable and trunk, with a label at each end of each piece (extensions
+// included, tagged EXT). A plain cable's end prints one label per connector on it: a lone
+// NL4 or XLR is one, a hard-wired fan like "XLR3-M x8" one per jack. A trunk's end is
+// one label: on the trunk where its tail plugs in, or on its own connector if it has none.
+export function cableGroups(show: Show, cable: Cable, settings: LabelSettings): LabelGroup[] {
+  const { type, tails, group, make, header } = labelContext(show, cable)
+  if (!type || (type.part !== 'Cable' && type.part !== 'Trunk')) return []
+  const trunk = type.part === 'Trunk'
+  const last = cable.segments.length - 1
+  const route = [[cable.from, cable.to].filter(Boolean).join(' → '), group].filter(Boolean).join(' · ')
+  const ends: ('A' | 'B')[] = settings.perPiece === 1 ? ['A'] : ['A', 'B']
+
+  return cable.segments.flatMap((g, i) => {
+    const ext = g.extension ? i : null
+    const key = cable.segments.length > 1 ? `${cable.id}-${g.id}` : cable.id
+    const endLabels = (end: 'A' | 'B'): TailLabel[] => {
+      const outer = (end === 'A' && i === 0) || (end === 'B' && i === last)
+      const connector = (end === 'A' ? type.endA : type.endB) ?? ''
+      const endKey = `${cable.id}-${g.id}-${end}`
+      if (trunk) {
+        // The patch point belongs to the tails when this end has some.
+        const hasTail = !!(end === 'A' ? cable.tailATypeId : cable.tailBTypeId)
+        const [label] = make(endKey, connector, outer ? end : null, tails.slice(0, 1), true, ext)
+        return [{ ...label, key: `${endKey}-end`, number: null, tailName: '', patch: hasTail ? '' : label.patch }]
+      }
+      const labels = make(endKey, connector, outer ? end : null, tails, tails.length === 1, ext)
+      return fold(labels, connectorCount(connector, tails.length), endKey)
+    }
+    const labels = ends.flatMap(endLabels)
+    if (!labels.length) return []
+    const piece = [type.name, g.length != null ? `${g.length}'` : '', ext ? `Ext ${ext}` : '', plural(labels.length, 'label')]
+    return [{ key, header: header(key, [piece.filter(Boolean).join(' · '), route]), labels }]
+  })
+}
+
+// Steck sets: a label for each end that mounts in a steck, naming the rack (for an
+// interconnect) or location, and what's in it: the tail's multipin side, or the
+// cable's own connector.
+export function steckGroups(show: Show, cable: Cable): LabelGroup[] {
+  const ends = (['A', 'B'] as const).filter((end) => (end === 'A' ? cable.steckA : cable.steckB))
+  if (!ends.length) return []
+  const type = typeById(show, cable.typeId)
+  const cableName = cable.name.trim() || 'Unnamed'
+  const rack = cableRack(show, cable)?.name
+  const group = bundleById(show, cable.bundleId)?.name ?? rack
+  const labels: SteckLabel[] = ends.map((end) => {
+    const location = (end === 'A' ? cable.from : cable.to).trim()
+    const tail = type?.part === 'Trunk' ? typeById(show, end === 'A' ? cable.tailATypeId : cable.tailBTypeId) : undefined
+    const connector = tail ? `${tail.name} · ${tail.endA}` : ((end === 'A' ? type?.endA : type?.endB) ?? '')
+    return {
+      kind: 'steck',
+      key: `${cable.id}-steck-${end}`,
+      cableName,
+      color: cable.color,
+      lines: [
+        ['Steck', rack, location].filter(Boolean).join(' · '),
+        [`End ${end}`, connector].filter(Boolean).join(' · '),
+      ],
+    }
   })
   return [
     {
-      key: cable.id,
+      key: `${cable.id}-stecks`,
       header: {
         kind: 'header',
-        key: `${cable.id}-header`,
+        key: `${cable.id}-stecks-header`,
         cableName,
         color: cable.color,
-        lines: [
-          [type.name, plural(labels.length, 'label')].join(' · '),
-          detail,
-        ].filter(Boolean),
+        lines: [[type?.name, plural(labels.length, 'steck')].filter(Boolean).join(' · '), group ?? ''].filter(Boolean),
       },
       labels,
     },
@@ -327,6 +400,7 @@ export function cableGroups(show: Show, cable: Cable, settings: LabelSettings): 
 }
 
 export function groupsFor(show: Show, cable: Cable, set: LabelSet, settings: LabelSettings): LabelGroup[] {
+  if (set === 'steck') return steckGroups(show, cable)
   return set === 'tail' ? tailGroups(show, cable) : cableGroups(show, cable, settings)
 }
 

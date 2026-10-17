@@ -12,13 +12,13 @@ import {
   slotPosition,
   storeLabelSettings,
   type BlockLabel,
-  type CableLabel,
   type FillOrder,
   type HeaderLabel,
   type Label,
   type LabelSet,
   type LabelSettings,
   type SheetId,
+  type SteckLabel,
   type SheetSpec,
   type TailLabel,
   type TailLayout,
@@ -59,10 +59,32 @@ function GenderTag({ label, sheet, font, corner }: { label: TailLabel; sheet: Sh
   )
 }
 
-// Width to keep clear on both sides of a centered line that shares its row with the gender tag.
-// Always sized for "Female" so both ends of a cable print their text the same size.
+// "EXT 1" in the corner opposite the gender tag, on the labels of an extension piece.
+function ExtTag({ label, sheet, font, corner }: { label: TailLabel; sheet: SheetSpec; font: string; corner: 'top' | 'bottom' }) {
+  if (!label.ext) return null
+  return (
+    <span
+      className="tl-ext"
+      style={{
+        fontFamily: font,
+        fontSize: `${sheet.pt.gender + 0.5}pt`,
+        left: `${sheet.padX * 0.6}in`,
+        [corner]: `${sheet.padY * 0.6}in`,
+      }}
+    >
+      EXT {label.ext}
+    </span>
+  )
+}
+
+// Width to keep clear on both sides of a centered line that shares its row with the corner
+// tags (gender on one side, EXT on the other). The gender part is always sized for "Female"
+// so both ends of a cable print their text the same size.
 function genderReserve(label: TailLabel, sheet: SheetSpec, font: string): number {
-  return label.gender ? measureIn('Female', 400, sheet.pt.gender, font) + 0.05 : 0
+  const gender = label.gender ? measureIn('Female', 400, sheet.pt.gender, font) : 0
+  const ext = label.ext ? measureIn(`EXT ${label.ext}`, 700, sheet.pt.gender + 0.5, font) + 0.04 : 0
+  const widest = Math.max(gender, ext)
+  return widest ? widest + 0.05 : 0
 }
 
 // Layout 1: "Cable Name•3" on top, the tail name big, then "→ patch"; gender in the top corner.
@@ -103,6 +125,7 @@ function StackedTail({ label, sheet }: { label: TailLabel; sheet: SheetSpec }) {
         )}
       </div>
       <GenderTag label={label} sheet={sheet} font={font} corner="top" />
+      <ExtTag label={label} sheet={sheet} font={font} corner="top" />
     </>
   )
 }
@@ -145,6 +168,7 @@ function SingleTail({ label, sheet, layout }: { label: TailLabel; sheet: SheetSp
         )}
       </div>
       <GenderTag label={label} sheet={sheet} font={font} corner="top" />
+      <ExtTag label={label} sheet={sheet} font={font} corner="top" />
     </>
   )
 }
@@ -179,14 +203,16 @@ function CenteredTail({ label, sheet }: { label: TailLabel; sheet: SheetSpec }) 
         </div>
       </div>
       <GenderTag label={label} sheet={sheet} font={font} corner="bottom" />
+      <ExtTag label={label} sheet={sheet} font={font} corner="bottom" />
     </>
   )
 }
 
-function CableBody({ label, sheet }: { label: CableLabel | BlockLabel; sheet: SheetSpec }) {
+// Tail blocks and stecks: the cable name over a couple of centered detail lines.
+function CableBody({ label, sheet }: { label: BlockLabel | SteckLabel; sheet: SheetSpec }) {
   const width = sheet.labelW - sheet.padX * 2 - 0.05
   return (
-    <div className={label.kind === 'block' ? 'label-text centered' : 'label-text'}>
+    <div className="label-text centered">
       <div className="label-title" style={{ fontSize: `${fitPt(label.cableName, 700, sheet.pt.cableTitle, 5, width)}pt` }}>
         <Shade color={label.color}>{label.cableName}</Shade>
       </div>
@@ -231,7 +257,7 @@ function SheetLabel(props: { label: Label; sheet: SheetSpec; layout: TailLayout;
     >
       {label.kind === 'header' ? (
         <HeaderBody label={label} sheet={sheet} />
-      ) : label.kind === 'cable' || label.kind === 'block' ? (
+      ) : label.kind === 'block' || label.kind === 'steck' ? (
         <CableBody label={label} sheet={sheet} />
       ) : label.single ? (
         <SingleTail label={label} sheet={sheet} layout={layout} />
@@ -265,7 +291,7 @@ export function LabelsView({ show }: { show: Show }) {
         title,
         cables: cables.map((cable) => {
           const groups = groupsFor(show, cable, set, settings)
-          return { cable, labels: groupLabels(groups, settings.headers) }
+          return { cable, labels: groupLabels(groups, settings.headers[set]) }
         }),
       })),
     [show, set, settings],
@@ -299,16 +325,21 @@ export function LabelsView({ show }: { show: Show }) {
       <aside className="labels-controls">
         <div className="segmented">
           <button className={set === 'tail' ? 'active' : ''} onClick={() => setSet('tail')}>
-            Tail labels
+            Tails
           </button>
           <button className={set === 'cable' ? 'active' : ''} onClick={() => setSet('cable')}>
-            Cable labels
+            Cables
+          </button>
+          <button className={set === 'steck' ? 'active' : ''} onClick={() => setSet('steck')}>
+            Stecks
           </button>
         </div>
         <p className="muted small">
           {set === 'tail'
-            ? 'Each fan or box gets a block label for its multipin end, then one label per tail. Plain cables get a label at every end.'
-            : 'One per mult or trunk piece, extensions included. Fan and box blocks print with the tail labels.'}
+            ? 'Only tails picked from a trunk\'s tail menus: each fan or box gets a block label for its multipin side, then one label per connector.'
+            : set === 'cable'
+              ? 'Every cable and trunk: a label at each end of each piece, extensions included. A built-in fan gets one per jack. Tails print in Tails.'
+              : "One per cable end that's checked as mounting in a steck (in the cable editor, under From / To)."}
         </p>
 
         <h3>Sheet</h3>
@@ -356,22 +387,14 @@ export function LabelsView({ show }: { show: Show }) {
           <>
             <h3>Cable labels</h3>
             <label className="field">
-              <span>Each trunk piece</span>
+              <span>Each cable piece</span>
               <select
                 value={settings.perPiece}
                 onChange={(e) => patch({ perPiece: Number(e.target.value) === 1 ? 1 : 2 })}
               >
                 <option value={2}>Label both ends</option>
-                <option value={1}>One label</option>
+                <option value={1}>One label (End A only)</option>
               </select>
-            </label>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={settings.includeSingles}
-                onChange={(e) => patch({ includeSingles: e.target.checked })}
-              />
-              Also label single cables (not trunks)
             </label>
           </>
         )}
@@ -388,7 +411,11 @@ export function LabelsView({ show }: { show: Show }) {
           </select>
         </label>
         <label className="check">
-          <input type="checkbox" checked={settings.headers} onChange={(e) => patch({ headers: e.target.checked })} />
+          <input
+            type="checkbox"
+            checked={settings.headers[set]}
+            onChange={(e) => patch({ headers: { ...settings.headers, [set]: e.target.checked } })}
+          />
           Header label before each {set === 'tail' ? 'tail set' : 'cable'}
         </label>
         <p className="muted small">Labels print bundle by bundle, then rack by rack, then everything else.</p>
@@ -493,9 +520,11 @@ export function LabelsView({ show }: { show: Show }) {
             <p className="muted">
               {show.cables.length === 0
                 ? 'Add cables first.'
-                : set === 'tail'
-                  ? 'Selected cables have no tails to label. Trunks need a fan or box on an end.'
-                  : 'Cable labels cover trunks. Turn on single cables to label those too.'}
+                : set === 'steck'
+                  ? 'No steck labels yet. Check "Steck" on a cable end in the cable editor to make one.'
+                  : set === 'tail'
+                  ? 'No tails to label. Pick a fan or box for a trunk end in the cable editor; single cables and cable ends print in Cables.'
+                  : 'Selected cables have nothing to label.'}
             </p>
           </div>
         ) : (

@@ -1680,3 +1680,84 @@ button.add-person:hover:not(:disabled) {
 .tails th.clip-label {
   max-width: 0;
 }
+
+/* "EXT 1" on an extension piece's labels: bold and boxed so it reads at a glance. */
+.tl-ext {
+  position: absolute;
+  font-weight: 700;
+  line-height: 1;
+  color: #000;
+  border: 0.5pt solid #000;
+  border-radius: 0.03in;
+  padding: 0.005in 0.02in;
+}
+
+/* Steck checkboxes and linked cables */
+
+.steck-row {
+  margin: -2px 0 6px;
+}
+
+.steck-row .check.inline {
+  min-width: 0;
+}
+
+.link-path {
+  list-style: none;
+  margin: 4px 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.link-path li {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 4px;
+}
+
+.link-path li.current {
+  background: var(--accent-soft);
+}
+
+.link-path .num {
+  text-align: right;
+  font-size: 12px;
+}
+
+.link-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link-actions {
+  display: flex;
+}
+
+.link-actions .icon {
+  font-size: 14px;
+  padding: 0 4px;
+}
+
+.link-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.link-controls select {
+  flex: 1;
+  min-width: 140px;
+}
+
+.link-mark {
+  margin-left: 5px;
+  font-size: 11px;
+}

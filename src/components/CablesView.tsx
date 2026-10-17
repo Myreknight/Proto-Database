@@ -4,6 +4,7 @@ import {
   bundleById,
   bundleLengthMismatch,
   cableRack,
+  linkedCables,
   describeLength,
   newCable,
   totalLength,
@@ -75,6 +76,7 @@ export function CablesView({ show, update, selectedId, onSelect, onOpenBundle, o
           named: tails.filter((t) => t.name.trim()).length,
           bundle: bundleById(show, cable.bundleId),
           rack: cableRack(show, cable),
+          path: linkedCables(show, cable),
           tailA,
           tailB,
           tailsText: type?.part === 'Trunk' ? `${tailA?.name ?? '—'} / ${tailB?.name ?? '—'}` : '',
@@ -235,7 +237,7 @@ export function CablesView({ show, update, selectedId, onSelect, onOpenBundle, o
                         </td>
                       </tr>
                     )}
-                    {groupRows.map(({ cable, type, tails, named, bundle: cableBundle, rack: cableRackRow, tailA, tailB, tailsText }) => {
+                    {groupRows.map(({ cable, type, tails, named, bundle: cableBundle, rack: cableRackRow, path, tailA, tailB, tailsText }) => {
                       const mismatch = bundleLengthMismatch(show, cable)
                       return (
                         <tr
@@ -246,6 +248,14 @@ export function CablesView({ show, update, selectedId, onSelect, onOpenBundle, o
                           <td className="strong nowrap">
                             {cable.color && <span className="dot" style={{ background: cable.color }} />}
                             {cable.name || <span className="muted">Unnamed</span>}
+                            {path.length > 0 && (
+                              <span
+                                className="link-mark"
+                                title={`Linked path: ${path.map((c) => c.name || 'Unnamed').join(' → ')}`}
+                              >
+                                🔗
+                              </span>
+                            )}
                           </td>
                           <td className="nowrap">{type?.name ?? <span className="warn">Missing type</span>}</td>
                           <td
