@@ -2310,3 +2310,46 @@ th.center {
     stroke: #555;
   }
 }
+
+/* Rack page */
+
+.rack-page-bar .rack-title {
+  font-size: 17px;
+  font-weight: 600;
+  min-width: 220px;
+}
+
+.rack-page-bar input.rack-size {
+  width: 64px;
+}
+
+.rack-page-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(360px, 1fr);
+  gap: 28px;
+  align-items: start;
+  padding: 4px 16px 32px;
+}
+
+.rack-layout {
+  position: sticky;
+  top: 64px;
+}
+
+.rack-layout .rack-drawing {
+  max-height: calc(100vh - 190px);
+}
+
+.rack-contents > h3:first-child {
+  margin-top: 0;
+}
+
+@media (max-width: 960px) {
+  .rack-page-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rack-layout {
+    position: static;
+  }
+}

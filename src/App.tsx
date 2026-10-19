@@ -154,7 +154,7 @@ export default function App() {
       flags: bundleIssues,
       flagTitle: `${bundleIssues} bundle warning(s): lengths that don't match, or ends flagged opposite the rest`,
     },
-    { id: 'racks', label: 'Interconnects', count: show.racks.length },
+    { id: 'racks', label: 'Racks', count: show.racks.length },
     {
       id: 'gear',
       label: 'Gear',

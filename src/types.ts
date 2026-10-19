@@ -83,10 +83,8 @@ export interface Rack {
   id: string
   name: string
   location: string
-  // Height in rack units, or null until it's set.
+  // Height in rack units, or null until it's set. The gear list counts racks by size.
   size: number | null
-  // The rack case itself, as a unit on the gear list (under Racks), kept in sync.
-  gearId: string | null
   notes: string
 }
 

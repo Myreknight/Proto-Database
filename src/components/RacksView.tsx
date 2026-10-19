@@ -7,7 +7,7 @@ import { addRack, rackCables, typeById } from '../show'
 import { loadViewSetting, nextSort, sortItems, storeViewSetting, type SortState, type SortValue } from '../sorting'
 import type { Rack, Show } from '../types'
 import { RackDrawingsView } from './RackDrawingsView'
-import { RackPane } from './RackPane'
+import { RackPage } from './RackPage'
 import { SortHeaders, type SortColumn } from './SortHeaders'
 
 interface Props {
@@ -110,10 +110,25 @@ export function RacksView({ show, update, selectedId, onSelect, onOpenCable, onO
     </div>
   )
 
+  // An open rack gets the whole tab.
+  if (selected) {
+    return (
+      <RackPage
+        key={selected.id}
+        show={show}
+        rack={selected}
+        update={update}
+        onClose={() => onSelect(null)}
+        onOpenCable={onOpenCable}
+        onOpenGear={onOpenGear}
+      />
+    )
+  }
+
   if (view.mode === 'drawings') return <RackDrawingsView show={show} toolbar={modeSwitch} onOpenGear={onOpenGear} />
 
   return (
-    <div className={selected ? 'split' : 'split no-editor'}>
+    <div className="split no-editor">
       <section className="pane">
         <div className="toolbar">
           {modeSwitch}
@@ -156,7 +171,7 @@ export function RacksView({ show, update, selectedId, onSelect, onOpenCable, onO
                 {rows.map(({ rack, cables, gear, ru, problems, contents: summary }) => (
                   <tr
                     key={rack.id}
-                    className={rack.id === selectedId ? 'selected' : undefined}
+                    className="clickable"
                     onClick={() => onSelect(rack.id)}
                   >
                     <td className="strong nowrap">{rack.name || <span className="muted">Unnamed</span>}</td>
@@ -181,18 +196,6 @@ export function RacksView({ show, update, selectedId, onSelect, onOpenCable, onO
           </div>
         )}
       </section>
-
-      {selected && (
-        <RackPane
-          key={selected.id}
-          show={show}
-          rack={selected}
-          update={update}
-          onClose={() => onSelect(null)}
-          onOpenCable={onOpenCable}
-          onOpenGear={onOpenGear}
-        />
-      )}
     </div>
   )
 }

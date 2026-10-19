@@ -16,7 +16,7 @@ import {
 import { parseRu } from '../csv'
 import { portKey } from '../ports'
 import { placedIn, placeUnplaced, setGearRack, topOf } from '../racking'
-import { deleteRack, ensureRack, rackById, rackDeleteMessage, rackOfCase, updateRack } from '../show'
+import { ensureRack, rackById } from '../show'
 import type { Gear, Show } from '../types'
 import { PromptDialog } from './PromptDialog'
 
@@ -74,8 +74,6 @@ export function GearPane({ show, gear, points, update, onClose, onOpenCable, onO
   const used = ports.filter((port) => onPort.has(portKey(port))).length
   const name = gear.name.trim()
   const label = gearLabel(gear)
-  // The case of a rack: its name and size are the rack's.
-  const caseOf = rackOfCase(show, gear.id)
   const rack = rackById(show, gear.rackId)
   const duplicate = !!name && show.gear.some((g) => g.id !== gear.id && g.name.trim().toLowerCase() === name.toLowerCase())
   // Suggestions come from the model library first, then whatever other units use.
@@ -125,12 +123,6 @@ export function GearPane({ show, gear, points, update, onClose, onOpenCable, onO
   }
 
   const remove = () => {
-    if (caseOf) {
-      if (!confirm(rackDeleteMessage(show, caseOf))) return
-      update((s) => deleteRack(s, caseOf.id))
-      onClose()
-      return
-    }
     const linked = points.length
       ? ` ${points.length} cable end(s) or patch point(s) name it; they keep their text but won't link to gear.`
       : ''
@@ -159,19 +151,13 @@ export function GearPane({ show, gear, points, update, onClose, onOpenCable, onO
             onFocus={() => (nameAtFocus.current = gear.name)}
             onBlur={commitName}
             onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-            onChange={(e) =>
-              caseOf
-                ? update((s) => updateRack(s, caseOf.id, { name: e.target.value }))
-                : patchGear({ name: e.target.value })
-            }
+            onChange={(e) => patchGear({ name: e.target.value })}
           />
         </label>
         <p className={duplicate ? 'flag small' : 'muted small'}>
           {duplicate
             ? '⚠ Another piece of gear has this name, so cables only link to the first one.'
-            : caseOf
-              ? 'This is the case for a rack, so it shares the rack’s name and size. Give it a make and model for the gear list.'
-              : 'Cable ends and patch cells that start with this name link here, like “Amp 1-A”. Leave it blank for bulk items counted by Qty.'}
+            : 'Cable ends and patch cells that start with this name link here, like “Amp 1-A”. Leave it blank for bulk items counted by Qty.'}
         </p>
 
         <div className="row2">
@@ -237,25 +223,23 @@ export function GearPane({ show, gear, points, update, onClose, onOpenCable, onO
           ))}
         </datalist>
 
-        {!caseOf && (
-          <label className="field">
-            <span>
-              Ports
-              {hasModel && (
-                <span className="muted">
-                  {' · '}
-                  {sharing > 1 ? `shared by all ${sharing} ${modelName}` : `for every ${modelName}`}
-                </span>
-              )}
-            </span>
-            <input
-              value={portSpec}
-              disabled={!hasModel}
-              placeholder={hasModel ? 'e.g. In A-D, Out 1-4, Net Pri, Net Sec' : 'Add a model to give it ports'}
-              onChange={(e) => update((s) => setModelPorts(s, gear, e.target.value))}
-            />
-          </label>
-        )}
+        <label className="field">
+          <span>
+            Ports
+            {hasModel && (
+              <span className="muted">
+                {' · '}
+                {sharing > 1 ? `shared by all ${sharing} ${modelName}` : `for every ${modelName}`}
+              </span>
+            )}
+          </span>
+          <input
+            value={portSpec}
+            disabled={!hasModel}
+            placeholder={hasModel ? 'e.g. In A-D, Out 1-4, Net Pri, Net Sec' : 'Add a model to give it ports'}
+            onChange={(e) => update((s) => setModelPorts(s, gear, e.target.value))}
+          />
+        </label>
         {(ports.length > 0 || modelNotes) && (
           <p className="muted small">
             {ports.length > 0 && (
@@ -272,7 +256,7 @@ export function GearPane({ show, gear, points, update, onClose, onOpenCable, onO
             )}
           </p>
         )}
-        {!caseOf && hasModel && (
+        {hasModel && (
           <label className="check inline small" title="Shared by every unit of this model">
             <input
               type="checkbox"
@@ -283,82 +267,60 @@ export function GearPane({ show, gear, points, update, onClose, onOpenCable, onO
           </label>
         )}
 
-        {caseOf ? (
-          <div className="row2 rack-row">
-            <div className="field">
-              <span>Rack</span>
-              <button type="button" className="link case-link" onClick={() => onOpenRack(caseOf.id)}>
-                Open {caseOf.name || 'the rack'}
-              </button>
-            </div>
-            <label className="field">
-              <span title="Rack units. 1U is 1.75 in.">Size (RU)</span>
-              <input
-                type="number"
-                min="1"
-                step="1"
-                value={caseOf.size ?? ''}
-                placeholder="e.g. 12"
-                onChange={(e) => update((s) => updateRack(s, caseOf.id, { size: parseRu(e.target.value) }))}
-              />
-            </label>
-          </div>
-        ) : (
-          <div className="row2 rack-row">
-            <label className="field">
-              <span>
-                Rack
-                {rack && (
-                  <>
-                    {' · '}
-                    <button type="button" className="link small" onClick={() => onOpenRack(rack.id)}>
-                      Open rack
-                    </button>
-                  </>
-                )}
-              </span>
-              <select
-                value={gear.rackId ?? ''}
-                onChange={(e) =>
-                  e.target.value === NEW_RACK
-                    ? setAskingRack(true)
-                    : update((s) => setGearRack(s, gear.id, e.target.value || null))
-                }
-              >
-                <option value="">Not in a rack</option>
-                {show.racks.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name || 'Unnamed rack'}
-                  </option>
-                ))}
-                <option value={NEW_RACK}>+ New rack…</option>
-              </select>
-            </label>
-            <label className="field">
-              <span title="Rack units, shared by every unit of this model. 1U is 1.75 in.">RU</span>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={ru ?? ''}
-                disabled={!hasModel}
-                placeholder={hasModel ? 'Not racked' : 'Needs a model'}
-                // Units of this model waiting in a rack for a size get a spot once it has one.
-                onChange={(e) => update((s) => placeUnplaced(setModelField(s, gear, { ru: parseRu(e.target.value) })))}
-              />
-            </label>
-            <label className="field half-field" title="Half the rack's width, shared by every unit of this model">
-              <span>Half</span>
-              <input
-                type="checkbox"
-                checked={half}
-                disabled={!hasModel}
-                onChange={(e) => update((s) => setModelField(s, gear, { halfWidth: e.target.checked }))}
-              />
-            </label>
-          </div>
-        )}
-        {!caseOf && rack && (
+        <div className="row2 rack-row">
+          <label className="field">
+            <span>
+              Rack
+              {rack && (
+                <>
+                  {' · '}
+                  <button type="button" className="link small" onClick={() => onOpenRack(rack.id)}>
+                    Open rack
+                  </button>
+                </>
+              )}
+            </span>
+            <select
+              value={gear.rackId ?? ''}
+              onChange={(e) =>
+                e.target.value === NEW_RACK
+                  ? setAskingRack(true)
+                  : update((s) => setGearRack(s, gear.id, e.target.value || null))
+              }
+            >
+              <option value="">Not in a rack</option>
+              {show.racks.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name || 'Unnamed rack'}
+                </option>
+              ))}
+              <option value={NEW_RACK}>+ New rack…</option>
+            </select>
+          </label>
+          <label className="field">
+            <span title="Rack units, shared by every unit of this model. 1U is 1.75 in.">RU</span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={ru ?? ''}
+              disabled={!hasModel}
+              placeholder={hasModel ? 'Not racked' : 'Needs a model'}
+              // Units of this model waiting in a rack for a size get a spot once it has one.
+              onChange={(e) => update((s) => placeUnplaced(setModelField(s, gear, { ru: parseRu(e.target.value) })))}
+            />
+          </label>
+          <label className="field half-field" title="Half the rack's width, shared by every unit of this model">
+            <span>Half</span>
+            <input
+              type="checkbox"
+              checked={half}
+              disabled={!hasModel}
+              onChange={(e) => update((s) => setModelField(s, gear, { halfWidth: e.target.checked }))}
+            />
+          </label>
+        </div>
+        {rack && (
           <p className="muted small">
             {spot
               ? `Sits at ${spot.height > 1 ? `U${topOf(spot)}–${spot.bottom}` : `U${spot.bottom}`}, ${spot.side} rails${spot.slot ? `, ${spot.slot} half` : ''}. Move it in the rack.`
@@ -436,19 +398,13 @@ export function GearPane({ show, gear, points, update, onClose, onOpenCable, onO
         <div className="editor-actions">
           <button
             onClick={() => setCopying(true)}
-            disabled={!name || !!caseOf}
-            title={
-              caseOf
-                ? 'Add another rack from the Interconnects tab'
-                : name
-                  ? `Add more units numbered after ${name}`
-                  : 'Name it first, or use Qty for bulk items'
-            }
+            disabled={!name}
+            title={name ? `Add more units numbered after ${name}` : 'Name it first, or use Qty for bulk items'}
           >
             Make copies…
           </button>
           <button className="danger" onClick={remove}>
-            {caseOf ? 'Delete rack' : 'Delete gear'}
+            Delete gear
           </button>
         </div>
       </div>

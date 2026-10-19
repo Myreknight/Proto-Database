@@ -135,7 +135,6 @@ export function normalizeShow(raw: unknown): Show {
     name: r.name ?? '',
     location: r.location ?? '',
     size: typeof r.size === 'number' && r.size > 0 ? r.size : null,
-    gearId: typeof r.gearId === 'string' ? r.gearId : null,
     notes: r.notes ?? '',
   }))
   // Shows from before racks were their own records kept a rack name on each cable.
@@ -145,7 +144,7 @@ export function normalizeShow(raw: unknown): Show {
     if (!legacy) return null
     let rack = racks.find((r) => r.name.toLowerCase() === legacy.toLowerCase())
     if (!rack) {
-      rack = { id: newId(), name: legacy, location: '', size: null, gearId: null, notes: '' }
+      rack = { id: newId(), name: legacy, location: '', size: null, notes: '' }
       racks.push(rack)
     }
     return rack.id
@@ -189,12 +188,15 @@ export function normalizeShow(raw: unknown): Show {
     }
   })
   // Shows from before gear existed get the default categories.
-  let gearCategories: GearCategory[] = Array.isArray(s.gearCategories)
+  const gearCategories: GearCategory[] = Array.isArray(s.gearCategories)
     ? s.gearCategories.map((g) => ({ id: g.id ?? newId(), name: g.name ?? '' }))
     : seedGearCategories()
   const categoryIds = new Set(gearCategories.map((g) => g.id))
   const rackIds = new Set(racks.map((r) => r.id))
-  const gear: Gear[] = (s.gear ?? []).map((g) => ({
+  // Shows from 0.7.6–0.7.9 kept each rack's case as a gear entry; the gear list now counts
+  // racks by size instead, so those entries go.
+  const caseIds = new Set((s.racks ?? []).map((r) => (r as { gearId?: unknown }).gearId).filter((id) => typeof id === 'string'))
+  const gear: Gear[] = (s.gear ?? []).filter((g) => !caseIds.has(g.id)).map((g) => ({
     id: g.id ?? newId(),
     name: g.name ?? '',
     categoryId: g.categoryId && categoryIds.has(g.categoryId) ? g.categoryId : null,
@@ -207,21 +209,6 @@ export function normalizeShow(raw: unknown): Show {
     rackSlot: g.rackSlot === 'left' || g.rackSlot === 'right' ? g.rackSlot : null,
     notes: g.notes ?? '',
   }))
-  // Every rack's case is on the gear list; shows from before that get one per rack.
-  const caseIds = new Set<string>()
-  for (const rack of racks) {
-    if (!rack.gearId || !gear.some((g) => g.id === rack.gearId)) {
-      const found = racksCategory(gearCategories)
-      gearCategories = found.categories
-      const unit = rackCase(rack, found.id)
-      gear.push(unit)
-      rack.gearId = unit.id
-    }
-    caseIds.add(rack.gearId)
-  }
-  // A rack case doesn't mount in a rack.
-  for (const g of gear) if (caseIds.has(g.id)) g.rackId = null
-
   // Shows from before the model library get the starter one.
   const gearModels: GearModel[] = Array.isArray(s.gearModels)
     ? s.gearModels
@@ -598,65 +585,14 @@ export function ensureRack(show: Show, name: string): { show: Show; rackId: stri
   return { show: added.show, rackId: added.rack.id }
 }
 
-// The rack case is gear too: it goes on the gear list under Racks, named after the rack,
-// with a model like "12U rack" that follows the rack's size until it's changed by hand.
-export const rackCaseModel = (size: number | null) => (size ? `${size}U rack` : 'Rack')
-const AUTO_RACK_MODEL = /^(\d+(\.\d+)?U rack|Rack)?$/
-
-function racksCategory(categories: GearCategory[]): { categories: GearCategory[]; id: string } {
-  const found = categories.find((c) => c.name.trim().toLowerCase() === 'racks')
-  if (found) return { categories, id: found.id }
-  const created = { id: newId(), name: 'Racks' }
-  return { categories: [...categories, created], id: created.id }
+// Adds a rack.
+export function addRack(show: Show, fields: Partial<Rack> = {}): { show: Show; rack: Rack } {
+  const rack: Rack = { id: newId(), name: '', location: '', size: null, notes: '', ...fields }
+  return { show: { ...show, racks: [...show.racks, rack] }, rack }
 }
 
-function rackCase(rack: Rack, categoryId: string): Gear {
-  return {
-    id: newId(),
-    name: rack.name,
-    categoryId,
-    manufacturer: '',
-    model: rackCaseModel(rack.size),
-    qty: 1,
-    rackId: null,
-    rackU: null,
-    rackSide: 'front',
-    rackSlot: null,
-    notes: '',
-  }
-}
-
-// Adds a rack, and its case to the gear list.
-export function addRack(show: Show, fields: Partial<Omit<Rack, 'gearId'>> = {}): { show: Show; rack: Rack } {
-  const { categories, id: categoryId } = racksCategory(show.gearCategories)
-  const base: Rack = { id: newId(), name: '', location: '', size: null, gearId: null, notes: '', ...fields }
-  const unit = rackCase(base, categoryId)
-  const rack = { ...base, gearId: unit.id }
-  return {
-    show: { ...show, racks: [...show.racks, rack], gearCategories: categories, gear: [...show.gear, unit] },
-    rack,
-  }
-}
-
-// Changes a rack, carrying its name and size over to its case on the gear list.
-export function updateRack(show: Show, rackId: string, changes: Partial<Omit<Rack, 'id' | 'gearId'>>): Show {
-  const rack = show.racks.find((r) => r.id === rackId)
-  if (!rack) return show
-  const next = { ...rack, ...changes }
-  return {
-    ...show,
-    racks: show.racks.map((r) => (r.id === rackId ? next : r)),
-    gear: show.gear.map((g) => {
-      if (g.id !== rack.gearId) return g
-      const model = 'size' in changes && AUTO_RACK_MODEL.test(g.model.trim()) ? rackCaseModel(next.size) : g.model
-      return { ...g, name: next.name, model }
-    }),
-  }
-}
-
-// The rack a gear unit is the case of, if it's one.
-export function rackOfCase(show: Show, gearId: string): Rack | undefined {
-  return show.racks.find((r) => r.gearId === gearId)
+export function updateRack(show: Show, rackId: string, changes: Partial<Omit<Rack, 'id'>>): Show {
+  return { ...show, racks: show.racks.map((r) => (r.id === rackId ? { ...r, ...changes } : r)) }
 }
 
 // What deleting a rack takes with it, and what stays behind.
@@ -667,10 +603,10 @@ export function rackDeleteMessage(show: Show, rack: Rack): string {
     cables ? `${cables} interconnect(s) stay interconnects with no rack` : '',
     gear ? `${gear} gear entr${gear === 1 ? 'y stays' : 'ies stay'} in the show with no rack` : '',
   ].filter(Boolean)
-  return `Delete ${rack.name || 'this rack'}? Its case comes off the gear list${kept.length ? `; its ${kept.join(', and its ')}` : ''}.`
+  return `Delete ${rack.name || 'this rack'}?${kept.length ? ` Its ${kept.join(', and its ')}.` : ''}`
 }
 
-// Deletes a rack and its case. Its interconnects and gear stay in the show, with no rack.
+// Deletes a rack. Its interconnects and gear stay in the show, with no rack.
 export function deleteRack(show: Show, rackId: string): Show {
   const rack = show.racks.find((r) => r.id === rackId)
   if (!rack) return show
@@ -678,9 +614,7 @@ export function deleteRack(show: Show, rackId: string): Show {
     ...show,
     racks: show.racks.filter((r) => r.id !== rackId),
     cables: show.cables.map((c) => (c.rackId === rackId ? { ...c, rackId: null } : c)),
-    gear: show.gear
-      .filter((g) => g.id !== rack.gearId)
-      .map((g) => (g.rackId === rackId ? { ...g, rackId: null, rackU: null, rackSlot: null } : g)),
+    gear: show.gear.map((g) => (g.rackId === rackId ? { ...g, rackId: null, rackU: null, rackSlot: null } : g)),
   }
 }
 

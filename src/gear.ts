@@ -542,7 +542,47 @@ export interface GearListSection {
 
 // The gear list: each category's gear totaled by manufacturer and model, in the order
 // it was entered. Gear with no make or model is totaled by name.
+// The racks themselves, counted by size: "2 × 12U rack". Which rack is which doesn't
+// matter for the gear list.
+function rackLines(show: Show): GearLine[] {
+  const bySize = new Map<string, GearLine>()
+  for (const rack of show.racks) {
+    const key = `rack:${rack.size ?? ''}`
+    const line = bySize.get(key) ?? {
+      key,
+      manufacturer: '',
+      model: rack.size ? `${rack.size}U rack` : 'Rack, size not set',
+      qty: 0,
+      units: '',
+      notes: '',
+    }
+    line.qty++
+    bySize.set(key, line)
+  }
+  return [...bySize.values()].sort((a, b) => a.model.localeCompare(b.model, undefined, { numeric: true }))
+}
+
 export function gearList(show: Show): GearListSection[] {
+  const sections = gearSectionLines(show)
+  const racks = rackLines(show)
+  if (!racks.length) return sections
+  // Racks go under the Racks category (wherever it sits in the order), or last.
+  const racksCategory = show.gearCategories.find((c) => c.name.trim().toLowerCase() === 'racks')
+  const qty = racks.reduce((n, l) => n + l.qty, 0)
+  const existing = racksCategory && sections.find((s) => s.category?.id === racksCategory.id)
+  if (existing) {
+    existing.lines = [...racks, ...existing.lines]
+    existing.qty += qty
+    return sections
+  }
+  const section = { category: racksCategory ?? { id: 'racks', name: 'Racks' }, lines: racks, qty }
+  const at = racksCategory ? show.gearCategories.indexOf(racksCategory) : -1
+  const index = at < 0 ? sections.length : sections.findIndex((s) => !s.category || show.gearCategories.indexOf(s.category) > at)
+  sections.splice(index < 0 ? sections.length : index, 0, section)
+  return sections
+}
+
+function gearSectionLines(show: Show): GearListSection[] {
   return gearSections(show).map(({ category, gear }) => {
     const lines = new Map<string, { line: GearLine; names: string[]; notes: Set<string> }>()
     for (const g of gear) {

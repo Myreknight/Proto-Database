@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { flushSync } from 'react-dom'
-import { drawingToDxf, drawingToSvg, rackDrawing } from '../drawing'
-import { downloadText, safeFilename } from '../files'
+import { rackDrawing } from '../drawing'
 import { gearLabel, gearRu, rackGear } from '../gear'
-import { frontRowsUsed, placedIn, rackProblems, topOf } from '../racking'
+import { downloadRackDxf, downloadRackSvg, rackSummary } from '../rackExport'
+import { placedIn, rackProblems, topOf } from '../racking'
 import type { Rack, Show } from '../types'
 import { PrintHeader } from './PrintHeader'
 import { RackDrawing } from './RackDrawing'
@@ -19,30 +19,22 @@ const PRINT_PAGE = '@media print { @page { size: letter landscape; margin: 0.4in
 
 const today = () => new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
 
-function rackMeta(show: Show, rack: Rack): string {
-  const used = frontRowsUsed(show, rack.id)
-  return [rack.location, rack.size ? `${rack.size}U rack, ${used}U used` : `${used}U used`].filter(Boolean).join(' · ')
-}
-
 function RackSheet({ show, rack, date, onOpenGear }: { show: Show; rack: Rack; date: string; onOpenGear: (id: string) => void }) {
   const placed = placedIn(show, rack.id).sort((a, b) => topOf(b) - topOf(a) || (a.side === 'front' ? -1 : 1))
   const problems = rackProblems(show, rack)
   const unplaced = rackGear(show, rack.id).filter((g) => !placed.some((p) => p.gear.id === g.id))
   const name = rack.name || 'Unnamed rack'
-  const file = `${safeFilename(show.name)} ${safeFilename(name)} Rack`
-  const exportDrawing = () =>
-    rackDrawing(show, rack, { title: [`${show.name} · ${name}`, [rackMeta(show, rack), date || today()].filter(Boolean).join(' · ')] })
 
   return (
     <section className="rack-sheet">
-      <PrintHeader show={show} title={`Rack Drawing · ${name}`} meta={[rackMeta(show, rack), date, `Proto Database v${__APP_VERSION__}`]} />
+      <PrintHeader show={show} title={`Rack Drawing · ${name}`} meta={[rackSummary(show, rack), date, `Proto Database v${__APP_VERSION__}`]} />
       <div className="sheet-head screen-only">
         <h3>
-          {name} <span className="muted">· {rackMeta(show, rack)}</span>
+          {name} <span className="muted">· {rackSummary(show, rack)}</span>
         </h3>
         <span className="spacer" />
-        <button onClick={() => downloadText(`${file}.svg`, drawingToSvg(exportDrawing()), 'image/svg+xml')}>SVG</button>
-        <button onClick={() => downloadText(`${file}.dxf`, drawingToDxf(exportDrawing()), 'application/dxf')}>DXF</button>
+        <button onClick={() => downloadRackSvg(show, rack, date)}>SVG</button>
+        <button onClick={() => downloadRackDxf(show, rack, date)}>DXF</button>
       </div>
       <div className="sheet-body">
         <div className="sheet-drawing">
