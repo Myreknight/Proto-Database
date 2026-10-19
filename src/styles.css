@@ -308,6 +308,7 @@ textarea {
 
 .toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
@@ -1760,4 +1761,552 @@ button.add-person:hover:not(:disabled) {
 .link-mark {
   margin-left: 5px;
   font-size: 11px;
+}
+
+/* Gear */
+
+.inline-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+/* An end or patch cell that names a piece of gear. */
+input.linked,
+.tails input.linked {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.gear-link {
+  display: block;
+  border: none;
+  background: none;
+  padding: 3px 0 0;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
+.gear-link:hover {
+  background: none;
+  text-decoration: underline;
+}
+
+.gear-connections {
+  list-style: none;
+  margin: 4px 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gear-connections li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.categories-dialog {
+  width: 420px;
+}
+
+.category-list {
+  list-style: none;
+  margin: 10px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.category-list li {
+  display: grid;
+  grid-template-columns: 1fr 28px auto auto auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.category-list .num {
+  text-align: right;
+}
+
+.category-add {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.category-add input {
+  flex: 1;
+}
+
+/* Ports */
+
+/* A linked end or cell whose port doesn't exist, or is already taken. */
+input.linked.port-issue,
+.tails input.linked.port-issue {
+  border-color: var(--warn);
+  box-shadow: inset 3px 0 0 var(--warn);
+}
+
+.port-flag {
+  display: block;
+  margin: 2px 0 0;
+}
+
+.port-map {
+  list-style: none;
+  margin: 4px 0 10px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.port-map li {
+  display: grid;
+  grid-template-columns: minmax(64px, max-content) 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.port-map li + li {
+  border-top: 1px solid var(--border);
+}
+
+.port-map .port-name {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.port-map li.free .port-use,
+.port-map li.free .port-name {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.port-map li.clash {
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
+}
+
+.port-map .port-use {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  min-width: 0;
+}
+
+.port-off-head {
+  margin: 8px 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Model library */
+
+.grid.models input.ports {
+  min-width: 340px;
+  width: 100%;
+}
+
+.grid.models input.notes {
+  min-width: 120px;
+  width: 100%;
+}
+
+.grid.models select {
+  min-width: 170px;
+}
+
+.row2.rack-row {
+  grid-template-columns: minmax(0, 1fr) 110px;
+}
+
+/* Rack elevation */
+
+.elev-details {
+  margin: 4px 0 14px;
+}
+
+.elev-details summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.elev-frame {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  max-width: 380px;
+  border: 2px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.elev-numbers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-right: 1px solid var(--border-strong);
+  background: var(--surface);
+}
+
+.elev-numbers li {
+  font-size: 9px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 17px;
+  border-bottom: 1px solid var(--border);
+}
+
+.elev-numbers li.over {
+  color: var(--danger);
+}
+
+.elev-bay {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.elev-unit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 0 8px;
+  border: none;
+  border-bottom: 1px solid var(--border-strong);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.elev-unit:hover {
+  background: var(--accent-soft);
+}
+
+.elev-name {
+  font-weight: 600;
+}
+
+.elev-model {
+  color: var(--muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.elev-ru {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.elev-free {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 11px;
+  background: repeating-linear-gradient(45deg, transparent 0 6px, rgb(127 127 127 / 0.12) 6px 12px);
+}
+
+.elev-limit {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 2px solid var(--danger);
+}
+
+.case-link {
+  text-align: left;
+  padding: 6px 0;
+}
+
+/* Rack drawings (SVG, in inches) */
+
+.rack-drawing {
+  display: block;
+  width: 100%;
+  height: auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, system-ui, sans-serif;
+}
+
+.rack-drawing .rd-frame {
+  stroke: var(--text);
+  stroke-width: 0.08;
+}
+
+.rack-drawing .rd-rule {
+  stroke: var(--border);
+  stroke-width: 0.03;
+}
+
+.rack-drawing .rd-limit {
+  stroke: var(--danger);
+  stroke-width: 0.1;
+}
+
+.rack-drawing .rd-box {
+  fill: var(--surface);
+  stroke: var(--text);
+  stroke-width: 0.06;
+}
+
+.rack-drawing .rd-back {
+  fill: var(--surface-2);
+  stroke: var(--muted);
+  stroke-dasharray: 0.3 0.2;
+}
+
+.rack-drawing .rd-box.rd-problem {
+  stroke: var(--danger);
+  stroke-width: 0.12;
+}
+
+.rack-drawing .rd-click {
+  cursor: pointer;
+}
+
+.rack-drawing .rd-click:hover {
+  fill: var(--accent-soft);
+}
+
+.rack-drawing .rd-text {
+  fill: var(--text);
+  pointer-events: none;
+}
+
+.rack-drawing .rd-muted {
+  fill: var(--muted);
+}
+
+.rack-drawing .rd-problem-text {
+  fill: var(--danger);
+}
+
+.row2.rack-row:has(.half-field) {
+  grid-template-columns: minmax(0, 1fr) 90px 44px;
+}
+
+.half-field input {
+  align-self: flex-start;
+  margin-top: 8px;
+}
+
+/* Rack units in the rack pane */
+
+.rack-units {
+  list-style: none;
+  margin: 4px 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rack-unit {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 5px 8px;
+}
+
+.rack-unit.problem {
+  border-color: var(--warn);
+}
+
+.ru-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.ru-head .link-name {
+  flex: 1;
+}
+
+.ru-pos {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  min-width: 52px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ru-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin-top: 4px;
+  padding-left: 60px;
+}
+
+.ru-u {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ru-u input {
+  width: 56px;
+}
+
+.ru-controls select {
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+.ru-note {
+  margin: 3px 0 0 60px;
+}
+
+.elev-views {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+td.center,
+th.center {
+  text-align: center;
+}
+
+/* Rack drawing sheets */
+
+.drawings-body {
+  padding: 0 16px 24px;
+}
+
+.rack-sheet + .rack-sheet {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.sheet-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.sheet-drawing {
+  flex: 1.4;
+  min-width: 0;
+}
+
+.sheet-drawing .rack-drawing {
+  max-height: 75vh;
+}
+
+.sheet-parts {
+  flex: 1;
+  min-width: 260px;
+  font-size: 13px;
+}
+
+@media print {
+  .drawings-view .toolbar {
+    display: none !important;
+  }
+
+  .drawings-body {
+    padding: 0;
+  }
+
+  .rack-sheet {
+    break-after: page;
+  }
+
+  .rack-sheet + .rack-sheet {
+    margin: 0;
+    padding: 0;
+    border: none;
+  }
+
+  .sheet-drawing .rack-drawing {
+    max-height: 6.3in;
+  }
+
+  .rack-drawing .rd-frame,
+  .rack-drawing .rd-box {
+    stroke: #000;
+  }
+
+  .rack-drawing .rd-box {
+    fill: #fff;
+  }
+
+  .rack-drawing .rd-back {
+    fill: #f2f2f2;
+    stroke: #888;
+  }
+
+  .rack-drawing .rd-rule {
+    stroke: #ccc;
+  }
+
+  .rack-drawing .rd-text {
+    fill: #000;
+  }
+
+  .rack-drawing .rd-muted {
+    fill: #555;
+  }
+}
+
+.steck-end {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rack-drawing .rd-slot {
+  fill: var(--surface-2);
+  stroke: var(--muted);
+  stroke-width: 0.04;
+}
+
+@media print {
+  .rack-drawing .rd-slot {
+    fill: #fafafa;
+    stroke: #555;
+  }
 }

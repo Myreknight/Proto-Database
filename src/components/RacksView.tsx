@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import type { Update } from '../App'
 import { newId } from '../ids'
-import { rackCables, typeById } from '../show'
+import { rackGear } from '../gear'
+import { frontRowsUsed, rackProblems } from '../racking'
+import { addRack, rackCables, typeById } from '../show'
 import { loadViewSetting, nextSort, sortItems, storeViewSetting, type SortState, type SortValue } from '../sorting'
 import type { Rack, Show } from '../types'
+import { RackDrawingsView } from './RackDrawingsView'
 import { RackPane } from './RackPane'
 import { SortHeaders, type SortColumn } from './SortHeaders'
 
@@ -13,13 +16,16 @@ interface Props {
   selectedId: string | null
   onSelect: (id: string | null) => void
   onOpenCable: (id: string) => void
+  onOpenGear: (id: string) => void
 }
 
-type SortKey = 'name' | 'location' | 'cables' | 'contents'
+type SortKey = 'name' | 'location' | 'gear' | 'ru' | 'cables' | 'contents'
 
 const COLUMNS: SortColumn<SortKey>[] = [
   { key: 'name', label: 'Rack' },
   { key: 'location', label: 'Location' },
+  { key: 'gear', label: 'Gear', num: true },
+  { key: 'ru', label: 'RU', num: true },
   { key: 'cables', label: 'Interconnects', num: true },
   { key: 'contents', label: 'Contents' },
 ]
@@ -36,26 +42,39 @@ function contents(show: Show, rack: Rack): string {
   return [...counts].map(([name, n]) => (n > 1 ? `${n}× ${name}` : name)).join(', ')
 }
 
-export function RacksView({ show, update, selectedId, onSelect, onOpenCable }: Props) {
+export function RacksView({ show, update, selectedId, onSelect, onOpenCable, onOpenGear }: Props) {
   const [query, setQuery] = useState('')
-  const [view, setView] = useState<{ sort: SortState<SortKey> }>(() => loadViewSetting(VIEW_KEY, { sort: null }))
+  const [view, setView] = useState<{ sort: SortState<SortKey>; mode: 'racks' | 'drawings' }>(() =>
+    loadViewSetting(VIEW_KEY, { sort: null, mode: 'racks' }),
+  )
   const selected = show.racks.find((r) => r.id === selectedId) ?? null
   const unracked = show.cables.filter((c) => c.deployment === 'interconnect' && !show.racks.some((r) => r.id === c.rackId))
 
   useEffect(() => storeViewSetting(VIEW_KEY, view), [view])
 
-  const addRack = () => {
-    const rack: Rack = { id: newId(), name: '', location: '', notes: '' }
-    update((s) => ({ ...s, racks: [...s.racks, rack] }))
-    onSelect(rack.id)
+  // The rack's case goes on the gear list with it.
+  const addNewRack = () => {
+    const id = newId()
+    update((s) => addRack(s, { id }).show)
+    onSelect(id)
   }
 
   const q = query.trim().toLowerCase()
   const allRows = show.racks
-    .map((rack) => ({ rack, cables: rackCables(show, rack.id), contents: contents(show, rack) }))
+    .map((rack) => ({
+      rack,
+      cables: rackCables(show, rack.id),
+      gear: rackGear(show, rack.id),
+      ru: frontRowsUsed(show, rack.id),
+      problems: rackProblems(show, rack).size,
+      contents: contents(show, rack),
+    }))
     .filter(
-      ({ rack, cables }) =>
-        !q || [rack.name, rack.location, ...cables.map((c) => c.name)].some((v) => v.toLowerCase().includes(q)),
+      ({ rack, cables, gear }) =>
+        !q ||
+        [rack.name, rack.location, ...cables.map((c) => c.name), ...gear.flatMap((g) => [g.name, g.model])].some((v) =>
+          v.toLowerCase().includes(q),
+        ),
     )
 
   type Row = (typeof allRows)[number]
@@ -65,6 +84,10 @@ export function RacksView({ show, update, selectedId, onSelect, onOpenCable }: P
         return row.rack.name
       case 'location':
         return row.rack.location
+      case 'gear':
+        return row.gear.reduce((n, g) => n + g.qty, 0)
+      case 'ru':
+        return row.ru
       case 'cables':
         return row.cables.length
       case 'contents':
@@ -73,17 +96,34 @@ export function RacksView({ show, update, selectedId, onSelect, onOpenCable }: P
   }
   const rows = sortItems(allRows, view.sort, sortValue)
 
+  const modeSwitch = (
+    <div className="segmented">
+      <button className={view.mode === 'racks' ? 'active' : ''} onClick={() => setView((v) => ({ ...v, mode: 'racks' }))}>
+        Racks
+      </button>
+      <button
+        className={view.mode === 'drawings' ? 'active' : ''}
+        onClick={() => setView((v) => ({ ...v, mode: 'drawings' }))}
+      >
+        Drawings
+      </button>
+    </div>
+  )
+
+  if (view.mode === 'drawings') return <RackDrawingsView show={show} toolbar={modeSwitch} onOpenGear={onOpenGear} />
+
   return (
     <div className={selected ? 'split' : 'split no-editor'}>
       <section className="pane">
         <div className="toolbar">
-          <button className="primary" onClick={addRack}>
+          {modeSwitch}
+          <button className="primary" onClick={addNewRack}>
             Add rack
           </button>
           <input
             className="search"
             type="search"
-            placeholder="Search racks and their interconnects…"
+            placeholder="Search racks, their gear and interconnects…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -98,7 +138,8 @@ export function RacksView({ show, update, selectedId, onSelect, onOpenCable }: P
           <div className="empty">
             <p>No racks yet.</p>
             <p className="muted">
-              Add a rack here, or set a cable's deployment to Interconnect and name its rack when asked.
+              Add a rack here, set a cable's deployment to Interconnect and name its rack when asked, or
+              pick a rack for gear in the Gear tab.
             </p>
           </div>
         ) : (
@@ -108,11 +149,11 @@ export function RacksView({ show, update, selectedId, onSelect, onOpenCable }: P
                 <SortHeaders
                   columns={COLUMNS}
                   sort={view.sort}
-                  onSort={(key) => setView((v) => ({ sort: nextSort(v.sort, key) }))}
+                  onSort={(key) => setView((v) => ({ ...v, sort: nextSort(v.sort, key) }))}
                 />
               </thead>
               <tbody>
-                {rows.map(({ rack, cables, contents: summary }) => (
+                {rows.map(({ rack, cables, gear, ru, problems, contents: summary }) => (
                   <tr
                     key={rack.id}
                     className={rack.id === selectedId ? 'selected' : undefined}
@@ -120,6 +161,14 @@ export function RacksView({ show, update, selectedId, onSelect, onOpenCable }: P
                   >
                     <td className="strong nowrap">{rack.name || <span className="muted">Unnamed</span>}</td>
                     <td>{rack.location}</td>
+                    <td className="num">{gear.reduce((n, g) => n + g.qty, 0) || ''}</td>
+                    <td
+                      className={problems ? 'num nowrap warn' : 'num nowrap'}
+                      title={problems ? `${problems} unit(s) overlapping or above the top of the rack` : undefined}
+                    >
+                      {problems > 0 && '⚠ '}
+                      {ru || rack.size ? `${ru}${rack.size ? ` / ${rack.size}` : ''}U` : ''}
+                    </td>
                     <td className="num">{cables.length}</td>
                     <td className="muted clip wide-clip" title={summary}>
                       {summary}
@@ -141,6 +190,7 @@ export function RacksView({ show, update, selectedId, onSelect, onOpenCable }: P
           update={update}
           onClose={() => onSelect(null)}
           onOpenCable={onOpenCable}
+          onOpenGear={onOpenGear}
         />
       )}
     </div>

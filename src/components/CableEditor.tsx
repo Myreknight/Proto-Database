@@ -24,6 +24,7 @@ import {
 } from '../show'
 import { DEPLOYMENTS, type Cable, type Deployment, type Show } from '../types'
 import { CABLE_COLORS, colorName } from '../colors'
+import { categoryById, fieldKey, gearLabel, patchSeries, type PatchPoint, type PatchReport } from '../gear'
 import { endConnectors } from '../labels'
 import { LengthDialog } from './LengthDialog'
 import { PromptDialog } from './PromptDialog'
@@ -34,9 +35,11 @@ interface Props {
   update: Update
   onClose: () => void
   onSelect: (id: string | null) => void
+  onOpenGear: (id: string) => void
+  patches: PatchReport
 }
 
-export function CableEditor({ show, cable, update, onClose, onSelect }: Props) {
+export function CableEditor({ show, cable, update, onClose, onSelect, onOpenGear, patches }: Props) {
   const [extending, setExtending] = useState(false)
   const [askingRack, setAskingRack] = useState(false)
   // Spreadsheet-style range in one tail column: anchor is where it started, focus where it ends.
@@ -48,6 +51,16 @@ export function CableEditor({ show, cable, update, onClose, onSelect }: Props) {
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
   const tailTypes = tailOptions(show, type)
   const lengthListId = `lengths-${cable.id}`
+  // Ends and patch cells that start with a gear name link to that gear (and its port).
+  const pointAt = (field: string) => patches.byField.get(fieldKey(cable.id, field))
+  const linkedTo = (p: PatchPoint) => `${gearLabel(p.gear)}${p.port ? ` · ${p.port}` : ''}`
+  const pointClass = (p: PatchPoint | undefined) => (p ? (p.issue ? 'linked port-issue' : 'linked') : '')
+  const pointTitle = (p: PatchPoint | undefined) => {
+    if (!p) return undefined
+    if (p.issue) return `⚠ ${p.issue}`
+    const category = categoryById(show, p.gear.categoryId)?.name
+    return `Linked to ${linkedTo(p)}${category ? ` (${category})` : ''}`
+  }
 
   const patch = (fn: (c: Cable, s: Show) => Cable) =>
     update((s) => ({ ...s, cables: s.cables.map((c) => (c.id === cable.id ? fn(c, s) : c)) }))
@@ -131,6 +144,16 @@ export function CableEditor({ show, cable, update, onClose, onSelect }: Props) {
     patch((c, s) => setTailCells(s, c, sel.field, rows, list))
   }
 
+  // ⌘D: fills the selection down from its top cell, stepping through the unit's ports
+  // ("SB-SL · In 1" → In 2, In 3…) or counting up ("Ch 1" → Ch 2…).
+  const fillSeries = () => {
+    if (!sel || !range) return
+    const rows = cellRows(sel.field, range.lo, range.hi)
+    if (rows.length < 2) return
+    const values = patchSeries(show, tails[rows[0]][sel.field], rows.length)
+    patch((c, s) => setTailCells(s, c, sel.field, rows, values))
+  }
+
   const rangeText = () =>
     sel && range ? cellRows(sel.field, range.lo, range.hi).map((r) => tails[r][sel.field]).join('\n') : ''
 
@@ -142,69 +165,93 @@ export function CableEditor({ show, cable, update, onClose, onSelect }: Props) {
     focusTail(field, index)
   }
 
-  const tailInput = (field: TailField, i: number, placeholder: string) => (
-    <input
-      data-tail={`${field}-${i}`}
-      className={multi && inRange(field, i) ? 'in-range' : undefined}
-      value={tails[i][field]}
-      placeholder={placeholder}
-      onMouseDown={(e) => {
-        // Shift-click extends down the column instead of selecting text.
-        if (e.shiftKey && sel?.field === field) {
-          e.preventDefault()
-          moveTo(field, i, true)
-        } else {
-          setSel({ field, anchor: i, focus: i })
+  const tailInput = (field: TailField, i: number, placeholder: string) => {
+    const point = field !== 'name' ? pointAt(`${field}-${i}`) : undefined
+    return (
+      <input
+        data-tail={`${field}-${i}`}
+        className={[multi && inRange(field, i) ? 'in-range' : '', pointClass(point)].filter(Boolean).join(' ') || undefined}
+        title={pointTitle(point)}
+        list={field !== 'name' ? 'patch-points' : undefined}
+        value={tails[i][field]}
+        placeholder={placeholder}
+        onMouseDown={(e) => {
+          // Shift-click extends down the column instead of selecting text.
+          if (e.shiftKey && sel?.field === field) {
+            e.preventDefault()
+            moveTo(field, i, true)
+          } else {
+            setSel({ field, anchor: i, focus: i })
+          }
+        }}
+        onFocus={() =>
+          setSel((prev) =>
+            prev?.field === field && i >= Math.min(prev.anchor, prev.focus) && i <= Math.max(prev.anchor, prev.focus)
+              ? prev
+              : { field, anchor: i, focus: i },
+          )
         }
-      }}
-      onFocus={() =>
-        setSel((prev) =>
-          prev?.field === field && i >= Math.min(prev.anchor, prev.focus) && i <= Math.max(prev.anchor, prev.focus)
-            ? prev
-            : { field, anchor: i, focus: i },
-        )
-      }
-      onChange={(e) => {
-        setSel({ field, anchor: i, focus: i })
-        patch((c, s) => setTailCells(s, c, field, [i], [e.target.value]))
-      }}
-      onPaste={(e) => {
-        const lines = e.clipboardData.getData('text').split(/\r?\n/)
-        if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop()
-        if (!multi && lines.length < 2) return
-        e.preventDefault()
-        if (multi) fillRange(lines.map((l) => l.trim()))
-        else patch((c, s) => setTailCells(s, c, field, cellRows(field, i), lines.map((l) => l.trim())))
-      }}
-      onCopy={(e) => {
-        if (!multi) return
-        e.preventDefault()
-        e.clipboardData.setData('text/plain', rangeText())
-      }}
-      onCut={(e) => {
-        if (!multi) return
-        e.preventDefault()
-        e.clipboardData.setData('text/plain', rangeText())
-        fillRange([''])
-      }}
-      onKeyDown={(e) => {
-        if (multi && (e.key === 'Delete' || e.key === 'Backspace')) {
+        onChange={(e) => {
+          setSel({ field, anchor: i, focus: i })
+          patch((c, s) => setTailCells(s, c, field, [i], [e.target.value]))
+        }}
+        onPaste={(e) => {
+          const lines = e.clipboardData.getData('text').split(/\r?\n/)
+          if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop()
+          if (!multi && lines.length < 2) return
           e.preventDefault()
+          if (multi) fillRange(lines.map((l) => l.trim()))
+          else patch((c, s) => setTailCells(s, c, field, cellRows(field, i), lines.map((l) => l.trim())))
+        }}
+        onCopy={(e) => {
+          if (!multi) return
+          e.preventDefault()
+          e.clipboardData.setData('text/plain', rangeText())
+        }}
+        onCut={(e) => {
+          if (!multi) return
+          e.preventDefault()
+          e.clipboardData.setData('text/plain', rangeText())
           fillRange([''])
-        } else if (e.key === 'Escape') {
-          setSel({ field, anchor: i, focus: i })
-        } else if (e.shiftKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-          e.preventDefault()
-          const from = sel?.field === field ? sel.focus : i
-          moveTo(field, from + (e.key === 'ArrowDown' ? 1 : -1), true)
-        } else if (e.key === 'Enter' || e.key === 'ArrowDown') {
-          moveTo(field, i + 1, false)
-        } else if (e.key === 'ArrowUp') {
-          moveTo(field, i - 1, false)
-        }
-      }}
-    />
-  )
+        }}
+        onKeyDown={(e) => {
+          if (multi && (e.key === 'Delete' || e.key === 'Backspace')) {
+            e.preventDefault()
+            fillRange([''])
+          } else if (multi && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') {
+            e.preventDefault()
+            fillSeries()
+          } else if (e.key === 'Escape') {
+            setSel({ field, anchor: i, focus: i })
+          } else if (e.shiftKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+            e.preventDefault()
+            const from = sel?.field === field ? sel.focus : i
+            moveTo(field, from + (e.key === 'ArrowDown' ? 1 : -1), true)
+          } else if (e.key === 'Enter' || e.key === 'ArrowDown') {
+            moveTo(field, i + 1, false)
+          } else if (e.key === 'ArrowUp') {
+            moveTo(field, i - 1, false)
+          }
+        }}
+      />
+    )
+  }
+
+  // Under an end's From/To field: the gear (and port) it plugs into, if its text names one.
+  const endGear = (field: 'from' | 'to') => {
+    const p = pointAt(field)
+    if (!p) return null
+    const category = categoryById(show, p.gear.categoryId)?.name
+    return (
+      <>
+        <button type="button" className="gear-link" onClick={() => onOpenGear(p.gear.id)} title="Open in Gear">
+          Linked to {linkedTo(p)}
+          {category && <span className="muted"> · {category}</span>}
+        </button>
+        {p.issue && <span className="flag small port-flag">⚠ {p.issue}</span>}
+      </>
+    )
+  }
 
   const remove = () => {
     if (!confirm(`Delete ${cable.name || 'this cable'}?`)) return
@@ -405,30 +452,59 @@ export function CableEditor({ show, cable, update, onClose, onSelect }: Props) {
             <span>From (End A)</span>
             <input
               list="locations"
+              className={pointClass(pointAt('from')) || undefined}
               value={cable.from}
               placeholder="e.g. Amp Room"
               onChange={(e) => patch((c) => ({ ...c, from: e.target.value }))}
             />
+            {endGear('from')}
           </label>
           <label className="field">
             <span>To (End B)</span>
             <input
               list="locations"
+              className={pointClass(pointAt('to')) || undefined}
               value={cable.to}
               placeholder="e.g. Box Boom HL"
               onChange={(e) => patch((c) => ({ ...c, to: e.target.value }))}
             />
+            {endGear('to')}
           </label>
         </div>
 
         <div className="row2 steck-row">
           {(['A', 'B'] as const).map((end) => {
             const key = end === 'A' ? 'steckA' : 'steckB'
+            const atKey = end === 'A' ? 'steckAAt' : 'steckBAt'
+            const point = pointAt(`steck${end}`)
+            const steckRack = point ? rackById(show, point.gear.rackId) : undefined
             return (
-              <label key={end} className="check inline small" title="This end mounts in a steck; prints a steck label">
-                <input type="checkbox" checked={cable[key]} onChange={(e) => patch((c) => ({ ...c, [key]: e.target.checked }))} />
-                <span className="clip-label">{endLabel(`Steck · End ${end}`, end)}</span>
-              </label>
+              <div key={end} className="steck-end">
+                <label className="check inline small" title="This end mounts in a steck; prints a steck label">
+                  <input type="checkbox" checked={cable[key]} onChange={(e) => patch((c) => ({ ...c, [key]: e.target.checked }))} />
+                  <span className="clip-label">{endLabel(`Steck · End ${end}`, end)}</span>
+                </label>
+                {cable[key] && (
+                  <>
+                    <input
+                      list="steck-slots"
+                      className={pointClass(point) || undefined}
+                      title={pointTitle(point)}
+                      value={cable[atKey]}
+                      placeholder="Rail and slot, e.g. SR 1 · 3"
+                      aria-label={`Steck rail and slot for End ${end}`}
+                      onChange={(e) => patch((c) => ({ ...c, [atKey]: e.target.value }))}
+                    />
+                    {point && (
+                      <button type="button" className="gear-link" onClick={() => onOpenGear(point.gear.id)} title="Open in Gear">
+                        {linkedTo(point)}
+                        {steckRack && <span className="muted"> · {steckRack.name || 'Unnamed rack'}</span>}
+                      </button>
+                    )}
+                    {point?.issue && <span className="flag small port-flag">⚠ {point.issue}</span>}
+                  </>
+                )}
+              </div>
             )
           })}
         </div>
@@ -541,9 +617,11 @@ export function CableEditor({ show, cable, update, onClose, onSelect }: Props) {
         <p className="muted small">
           Patch A is where each connector plugs in at End A (the From location), Patch B at End B (the To location),
           so each Patch column has one cell per connector on that end, filling from the top. It prints after the arrow on
-          that end's labels.
+          that end's labels. A cell that starts with a gear name, like “Amp 1-A”, links to that gear (marked in blue), and
+          what follows is the port; amber means the gear has no such port or another cable is already on it.
           Paste a list into any column to fill the tails below it. Shift-click down a column to select
-          several cells, then paste to fill them or press Delete to clear them.
+          several cells, then paste to fill them, press Delete to clear them, or press ⌘D to fill down from the top
+          cell, counting up (“In 1”, “In 2”…) or through the gear's ports.
         </p>
         <table
           className="tails"

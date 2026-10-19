@@ -1,15 +1,17 @@
-import { useCallback, useEffect, useReducer, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
 import { BundlesView } from './components/BundlesView'
 import { CablesView } from './components/CablesView'
 import { CableTypesView } from './components/CableTypesView'
 import { ChecklistsView } from './components/ChecklistsView'
 import { FileMenu } from './components/FileMenu'
+import { GearView } from './components/GearView'
 import { LabelsView } from './components/LabelsView'
 import { PullListView } from './components/PullListView'
 import { RacksView } from './components/RacksView'
 import { ShowSetupView } from './components/ShowSetupView'
 import { AmpDisplay, AmpTitleBar } from './components/WinampDecor'
 import { downloadText, pickTextFile, safeFilename } from './files'
+import { gearNames, patchReport } from './gear'
 import { historyReducer, initHistory, now, typingField } from './history'
 import {
   bundleLengthMismatchCount,
@@ -24,7 +26,7 @@ import type { Show } from './types'
 
 export type Update = (fn: (show: Show) => Show) => void
 
-type Tab = 'setup' | 'cables' | 'bundles' | 'racks' | 'pull' | 'labels' | 'checks' | 'types'
+type Tab = 'setup' | 'cables' | 'bundles' | 'racks' | 'gear' | 'pull' | 'labels' | 'checks' | 'types'
 
 // The Winamp skin is a per-viewer joke, so it lives in browser storage, not the show.
 const SKIN_KEY = 'proto-database:skin'
@@ -44,6 +46,7 @@ export default function App() {
   const [selectedCableId, setSelectedCableId] = useState<string | null>(null)
   const [selectedBundleId, setSelectedBundleId] = useState<string | null>(null)
   const [selectedRackId, setSelectedRackId] = useState<string | null>(null)
+  const [selectedGearId, setSelectedGearId] = useState<string | null>(null)
   const [winamp, setWinamp] = useState(loadSkin)
 
   useEffect(() => {
@@ -56,6 +59,9 @@ export default function App() {
   }, [winamp])
 
   useEffect(() => storeShow(show), [show])
+
+  // Which cable ends and patch cells land on which gear ports, shared by every tab.
+  const patches = useMemo(() => patchReport(show), [show])
 
   const update: Update = useCallback((fn) => dispatch({ type: 'update', fn, at: now(), field: typingField() }), [])
   const replaceShow = (next: Show) => dispatch({ type: 'replace', show: next, at: now() })
@@ -101,6 +107,7 @@ export default function App() {
     setSelectedCableId(null)
     setSelectedBundleId(null)
     setSelectedRackId(null)
+    setSelectedGearId(null)
   }
 
   const openShow = async () => {
@@ -111,6 +118,7 @@ export default function App() {
       setSelectedCableId(null)
       setSelectedBundleId(null)
       setSelectedRackId(null)
+      setSelectedGearId(null)
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Could not open that file.')
     }
@@ -131,11 +139,29 @@ export default function App() {
     setTab('racks')
   }
 
+  const openGear = (id: string) => {
+    setSelectedGearId(id)
+    setTab('gear')
+  }
+
   const bundleIssues = bundleLengthMismatchCount(show) + flagReversedCount(show)
-  const tabs: { id: Tab; label: string; count?: number; flags?: number }[] = [
+  const tabs: { id: Tab; label: string; count?: number; flags?: number; flagTitle?: string }[] = [
     { id: 'cables', label: 'Cables', count: show.cables.length },
-    { id: 'bundles', label: 'Bundles', count: show.bundles.length, flags: bundleIssues },
+    {
+      id: 'bundles',
+      label: 'Bundles',
+      count: show.bundles.length,
+      flags: bundleIssues,
+      flagTitle: `${bundleIssues} bundle warning(s): lengths that don't match, or ends flagged opposite the rest`,
+    },
     { id: 'racks', label: 'Interconnects', count: show.racks.length },
+    {
+      id: 'gear',
+      label: 'Gear',
+      count: show.gear.length,
+      flags: patches.issues,
+      flagTitle: `${patches.issues} patch warning(s): ports a model doesn't list, or two cables on one port`,
+    },
     { id: 'pull', label: 'Pull List' },
     { id: 'labels', label: 'Labels' },
     { id: 'checks', label: 'Checklists' },
@@ -210,10 +236,7 @@ export default function App() {
             {t.label}
             {t.count != null && <span className="count">{t.count}</span>}
             {!!t.flags && (
-              <span
-                className="count flagged"
-                title={`${t.flags} bundle warning(s): lengths that don't match, or ends flagged opposite the rest`}
-              >
+              <span className="count flagged" title={t.flagTitle}>
                 ⚠ {t.flags}
               </span>
             )}
@@ -231,6 +254,8 @@ export default function App() {
             onSelect={setSelectedCableId}
             onOpenBundle={openBundle}
             onOpenRack={openRack}
+            onOpenGear={openGear}
+            patches={patches}
           />
         )}
         {tab === 'racks' && (
@@ -240,6 +265,18 @@ export default function App() {
             selectedId={selectedRackId}
             onSelect={setSelectedRackId}
             onOpenCable={openCable}
+            onOpenGear={openGear}
+          />
+        )}
+        {tab === 'gear' && (
+          <GearView
+            show={show}
+            patches={patches}
+            update={update}
+            selectedId={selectedGearId}
+            onSelect={setSelectedGearId}
+            onOpenCable={openCable}
+            onOpenRack={openRack}
           />
         )}
         {tab === 'bundles' && (
@@ -258,8 +295,18 @@ export default function App() {
       </main>
 
       <datalist id="locations">
-        {locations(show).map((l) => (
+        {[...locations(show), ...patches.freePorts].map((l) => (
           <option key={l} value={l} />
+        ))}
+      </datalist>
+      <datalist id="steck-slots">
+        {patches.freeSteckSlots.map((n) => (
+          <option key={n} value={n} />
+        ))}
+      </datalist>
+      <datalist id="patch-points">
+        {[...gearNames(show), ...patches.freePorts].map((n) => (
+          <option key={n} value={n} />
         ))}
       </datalist>
     </div>

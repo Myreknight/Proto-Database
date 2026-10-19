@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Update } from '../App'
+import type { PatchReport } from '../gear'
 import {
   bundleById,
   bundleLengthMismatch,
@@ -31,6 +32,8 @@ interface Props {
   onSelect: (id: string | null) => void
   onOpenBundle: (id: string) => void
   onOpenRack: (id: string) => void
+  onOpenGear: (id: string) => void
+  patches: PatchReport
 }
 
 type SortKey = 'name' | 'type' | 'tails' | 'deployment' | 'bundle' | 'from' | 'to' | 'length' | 'named'
@@ -54,7 +57,7 @@ const COLUMNS: SortColumn<SortKey>[] = [
 
 const VIEW_KEY = 'proto-database:cable-view'
 
-export function CablesView({ show, update, selectedId, onSelect, onOpenBundle, onOpenRack }: Props) {
+export function CablesView({ show, update, selectedId, onSelect, onOpenBundle, onOpenRack, onOpenGear, patches }: Props) {
   const [query, setQuery] = useState('')
   const [view, setView] = useState<ViewState>(() => loadViewSetting(VIEW_KEY, { sort: null, grouped: true }))
   const selected = show.cables.find((c) => c.id === selectedId) ?? null
@@ -300,6 +303,8 @@ export function CablesView({ show, update, selectedId, onSelect, onOpenBundle, o
           update={update}
           onClose={() => onSelect(null)}
           onSelect={onSelect}
+          onOpenGear={onOpenGear}
+          patches={patches}
         />
       )}
     </div>

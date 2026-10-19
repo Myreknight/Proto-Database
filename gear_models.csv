@@ -1,0 +1,74 @@
+Manufacturer,Model,Category,RU,Width,Steck,Ports,Notes
+DiGiCo,Quantum 7,Consoles,,,,,
+DiGiCo,Quantum 338,Consoles,,,,,
+DiGiCo,SD7,Consoles,,,,,
+DiGiCo,SD-Rack,Consoles,,,,"In 1-56, Out 1-24, Optics A-B, MADI A-B","Draft, check the spec sheet. Card config varies"
+DiGiCo,SD-MiNi Rack,Consoles,4,,,"In 1-32, Out 1-16, MADI A-B","Draft, check the spec sheet"
+Yamaha,CL5,Consoles,,,,"Omni In 1-8, Omni Out 1-8, Dante Pri, Dante Sec","Draft, check the spec sheet"
+Yamaha,Rio3224-D2,Consoles,5,,,"In 1-32, Out 1-16, AES Out 1-4, Dante Pri, Dante Sec","Draft, check the spec sheet"
+Yamaha,Rio1608-D2,Consoles,3,,,"In 1-16, Out 1-8, Dante Pri, Dante Sec","Draft, check the spec sheet"
+Apple,Mac mini,Playback & Computers,,,,,Ports vary by year
+Focusrite,RedNet A16R MkII,Playback & Computers,1,,,"In DB25 A, In DB25 B, Out DB25 A, Out DB25 B, Dante Pri, Dante Sec","Draft, check the spec sheet"
+Meyer Sound,GALAXY 816,Processing,1,,,"In 1-8, Out 1-16, AVB 1-2","Draft, check the spec sheet"
+Meyer Sound,GALAXY 408,Processing,1,,,"In 1-4, Out 1-8, AVB 1-2","Draft, check the spec sheet"
+d&b,D80,Amplifiers,2,,,"In A-D, Out A-D, Out NL8, Net 1-2","Draft, check the spec sheet"
+d&b,D40,Amplifiers,2,,,"In A-D, Out A-D, Out NL8, Net 1-2","Draft, check the spec sheet"
+d&b,D20,Amplifiers,2,,,"In A-D, Out A-D, Out NL8, Net 1-2","Draft, check the spec sheet"
+L-Acoustics,LA12X,Amplifiers,2,,,"In 1-4, AES In 1-2, Out 1-4, Out NL8, Net 1-2","Draft, check the spec sheet"
+d&b,E6,Speakers,,,,"In, Link","Draft, check the spec sheet"
+d&b,E8,Speakers,,,,"In, Link","Draft, check the spec sheet"
+d&b,Y10P,Speakers,,,,"In, Link","Draft, check the spec sheet"
+d&b,V8,Speakers,,,,"In, Link","Draft, check the spec sheet"
+d&b,V-SUB,Speakers,,,,"In, Link","Draft, check the spec sheet"
+d&b,Y-SUB,Speakers,,,,"In, Link","Draft, check the spec sheet"
+L-Acoustics,Kara II,Speakers,,,,"In, Link","Draft, check the spec sheet"
+L-Acoustics,X8,Speakers,,,,"In, Link","Draft, check the spec sheet"
+Meyer Sound,UPJ-1P,Speakers,,,,"Input, Loop, AC In, AC Loop","Draft, check the spec sheet"
+Meyer Sound,UPA-1P,Speakers,,,,"Input, Loop, AC In, AC Loop","Draft, check the spec sheet"
+Meyer Sound,900-LFC,Speakers,,,,"Input, Loop, AC In, AC Loop","Draft, check the spec sheet"
+Shure,AD4Q,Wireless,1,,,"Out 1-4, AES Out 1-2, Net 1-4, Antenna A, Antenna B, Cascade A, Cascade B","Draft, check the spec sheet"
+Shure,AD4D,Wireless,1,,,"Out 1-2, AES Out, Net 1-4, Antenna A, Antenna B, Cascade A, Cascade B","Draft, check the spec sheet"
+Shure,ULXD4Q,Wireless,1,,,"Out 1-4, Mix Out, Net 1-2, Antenna A, Antenna B, Cascade A, Cascade B","Draft, check the spec sheet"
+Shure,ADX1M,Wireless,,,,,
+Sennheiser,EM 6000,Wireless,1,,,"Out 1-2, AES Out, Dante 1-2, Antenna A, Antenna B, Cascade A, Cascade B, Word Clock In","Draft, check the spec sheet"
+Sennheiser,SK 6212,Wireless,,,,,
+Wisycom,MRK980,Wireless,,,,,
+Wisycom,MTP60,Wireless,,,,,
+DPA,4061,Microphones,,,,,
+DPA,6061,Microphones,,,,,
+Countryman,B3,Microphones,,,,,
+Shure,SM58,Microphones,,,,,
+Shure,Beta 58A,Microphones,,,,,
+Shure,P10T,Monitors & IEM,1,,,"In 1L, In 1R, In 2L, In 2R, Loop 1L, Loop 1R, Loop 2L, Loop 2R, RF Out, Net","Draft, check the spec sheet"
+Sennheiser,SR 2050 IEM,Monitors & IEM,1,,,"In 1L, In 1R, In 2L, In 2R, Loop 1L, Loop 1R, Loop 2L, Loop 2R, Antenna, Net","Draft, check the spec sheet"
+Clear-Com,HelixNet HMS-4X,Comms,1,,,,
+Clear-Com,FreeSpeak II Base,Comms,1,,,,
+Riedel,Bolero,Comms,,,,,
+Marshall,CV503,Video,,,,"SDI Out, HDMI Out, Power, Control","Draft, check the spec sheet"
+Blackmagic Design,ATEM Mini Pro,Video,,,,"HDMI In 1-4, HDMI Out, Mic 1-2, USB-C, Ethernet","Draft, check the spec sheet"
+Blackmagic Design,Micro Converter SDI to HDMI,Video,,,,"SDI In, SDI Loop, HDMI Out, USB Power","Draft, check the spec sheet"
+Luminex,GigaCore 16Xt,Networking,1,,,"1-12, SFP 1-4","Draft, check the spec sheet"
+Generic,8-port switch,Networking,1,,,1-8,
+Generic,16-port switch,Networking,1,,,1-16,
+Generic,24-port switch,Networking,1,,,1-24,
+Generic,48-port switch,Networking,1,,,1-48,
+Furman,PL-8C,Power,1,,,"Front, Rear 1-8","Draft, check the spec sheet"
+Generic,Blank panel 1U,Hardware,1,,,,
+Generic,Blank panel 2U,Hardware,2,,,,
+Generic,Vent panel 1U,Hardware,1,,,,
+Generic,Shelf 1U,Hardware,1,,,,
+Generic,Shelf 2U,Hardware,2,,,,
+Generic,Drawer 2U,Hardware,2,,,,
+Generic,Drawer 3U,Hardware,3,,,,
+Middle Atlantic,EB1,Hardware,1,,,,1U blank panel
+Middle Atlantic,EB2,Hardware,2,,,,2U blank panel
+Middle Atlantic,VT1,Hardware,1,,,,1U vent panel
+Middle Atlantic,VT2,Hardware,2,,,,2U vent panel
+Middle Atlantic,U1,Hardware,1,,,,1U utility shelf
+Middle Atlantic,U1V,Hardware,1,,,,1U vented shelf
+Middle Atlantic,U2,Hardware,2,,,,2U utility shelf
+Middle Atlantic,D2,Hardware,2,,,,2U drawer
+Middle Atlantic,D3,Hardware,3,,,,3U drawer
+Middle Atlantic,LBP-1R,Hardware,,,,,"Lacing bar, round rod. Check its rack height"
+Generic,Steck rail 1U,Hardware,1,,Yes,1-4,"4 slots; each holds one G-block or two D-size connectors (etherCON, opticalCON DUO…)"
+Generic,Steck rail 2U,Hardware,2,,Yes,1-4,4 slots; each holds one G-block (up to 19pr) or four D-size connectors

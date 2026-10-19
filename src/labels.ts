@@ -1,4 +1,5 @@
-import { bundleById, cableRack, hasTails, typeById, visibleTails } from './show'
+import { gearMatcher } from './match'
+import { bundleById, cableRack, hasTails, steckMount, typeById, visibleTails } from './show'
 import type { Cable, CableType, Show, Tail } from './types'
 
 export type SheetId = 'avery5167' | 'avery5160'
@@ -384,17 +385,21 @@ export function steckGroups(show: Show, cable: Cable): LabelGroup[] {
   const cableName = cable.name.trim() || 'Unnamed'
   const rack = cableRack(show, cable)?.name
   const group = bundleById(show, cable.bundleId)?.name ?? rack
+  const match = gearMatcher(show.gear)
   const labels: SteckLabel[] = ends.map((end) => {
     const location = (end === 'A' ? cable.from : cable.to).trim()
-    const tail = type?.part === 'Trunk' ? typeById(show, end === 'A' ? cable.tailATypeId : cable.tailBTypeId) : undefined
-    const connector = tail ? `${tail.name} · ${tail.endA}` : ((end === 'A' ? type?.endA : type?.endB) ?? '')
+    // Mounted on a steck rail in a rack: "@ Comm Video Rack", like a shop's steck labels.
+    const rail = match(end === 'A' ? cable.steckAAt : cable.steckBAt)?.gear
+    const railRack = rail?.rackId ? show.racks.find((r) => r.id === rail.rackId) : undefined
+    const mount = steckMount(show, cable, end)
+    const connector = mount.tail ? `${mount.tail.name} · ${mount.connector}` : mount.connector
     return {
       kind: 'steck',
       key: `${cable.id}-steck-${end}`,
       cableName,
       color: cable.color,
       lines: [
-        ['Steck', rack, location].filter(Boolean).join(' · '),
+        railRack ? `@ ${railRack.name.trim() || 'Unnamed rack'}` : ['Steck', rack, location].filter(Boolean).join(' · '),
         [`End ${end}`, connector].filter(Boolean).join(' · '),
       ],
     }

@@ -1,0 +1,64 @@
+name: Report a bug
+description: Something is broken or doesn't work the way it should
+title: "Bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting it. This repo is public, so leave out anything private about a show.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      placeholder: e.g. The Patch B column lost what I typed after I changed End A's tail
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can we make it happen again?
+      placeholder: |
+        1. Add a cable with an NL8 trunk
+        2. Pick 2x NL4 for End A
+        3. …
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app?
+      options:
+        - Cables
+        - Bundles
+        - Interconnects / racks
+        - Pull List
+        - Labels or printing
+        - Checklists
+        - Cable Types
+        - Show Setup
+        - Saving and opening shows
+        - Not sure
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown next to "Proto Database" in the top left.
+      placeholder: e.g. v0.7.1
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options:
+        - Chrome
+        - Safari
+        - Firefox
+        - Edge
+        - Arc
+        - Other
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots help. You can also attach a show file (File → Save), but it will be public, so only share a test show.

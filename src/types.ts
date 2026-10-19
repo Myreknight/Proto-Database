@@ -58,6 +58,10 @@ export interface Cable {
   // prints a steck label.
   steckA: boolean
   steckB: boolean
+  // Where each steck end mounts: a slot on a steck rail, typed like a patch point
+  // ("SR 1 · 3") so it links to the rail and its slot.
+  steckAAt: string
+  steckBAt: string
   // Cables that make up one signal path (interconnect → steck → bundled cable → steck →
   // interconnect) share a link id; linkOrder is this cable's place in that path.
   linkId: string | null
@@ -74,11 +78,79 @@ export interface Bundle {
   notes: string
 }
 
-// A rack that interconnects patch inside of.
+// A rack that interconnects patch inside of and gear mounts in.
 export interface Rack {
   id: string
   name: string
   location: string
+  // Height in rack units, or null until it's set.
+  size: number | null
+  // The rack case itself, as a unit on the gear list (under Racks), kept in sync.
+  gearId: string | null
+  notes: string
+}
+
+// What gear is filed under on the gear list. Shows can rename, reorder and add to these.
+export interface GearCategory {
+  id: string
+  name: string
+}
+
+export const GEAR_CATEGORY_NAMES = [
+  'Consoles',
+  'Playback & Computers',
+  'Processing',
+  'Amplifiers',
+  'Speakers',
+  'Wireless',
+  'Microphones',
+  'Monitors & IEM',
+  'Comms',
+  'Video',
+  'Networking',
+  'Power',
+  'Racks',
+  'Hardware',
+  'Misc',
+]
+
+// One unit of gear (Amp 1), or a bulk line with a quantity (20 mic clips). A cable end
+// or patch point links to a unit when its text starts with the unit's name ("Amp 1-A").
+export interface Gear {
+  id: string
+  name: string
+  categoryId: string | null
+  manufacturer: string
+  model: string
+  qty: number
+  // The rack it's mounted in, and where: the bottom rack unit it sits on (U1 is the
+  // bottom of the rack), front or rear rails, and which half for half-width gear. A bulk
+  // line stacks its pieces upward from there.
+  rackId: string | null
+  rackU: number | null
+  rackSide: RackSide
+  rackSlot: RackSlot | null
+  notes: string
+}
+
+export type RackSide = 'front' | 'rear'
+export type RackSlot = 'left' | 'right'
+
+// The show's model library. Ports are set once per model, so every D80 shares one list,
+// typed as ranges: "In A-D, Out 1-4, Net Pri, Net Sec" or "1-48". Matched to gear by
+// manufacturer and model; the category is what a new unit of that model gets.
+export interface GearModel {
+  id: string
+  manufacturer: string
+  model: string
+  categoryId: string | null
+  // Height in rack units (1U = 1.75 in, per EIA-310); null for gear that doesn't rack-mount.
+  ru: number | null
+  // Half the rack's width, so two can sit side by side in the same rack units.
+  halfWidth: boolean
+  // A steck rail or panel: its ports are slots that tail connectors (G-blocks) mount in.
+  steck: boolean
+  ports: string
   notes: string
 }
 
@@ -135,6 +207,9 @@ export interface Show {
   cables: Cable[]
   bundles: Bundle[]
   racks: Rack[]
+  gearCategories: GearCategory[]
+  gear: Gear[]
+  gearModels: GearModel[]
   // Prep checklist progress, keyed by checklist item (see checklists.ts).
   checks: Record<string, Checks>
 }

@@ -11,6 +11,77 @@ export const CABLE_TYPE_HEADERS = [
   'Notes',
 ]
 
+export const GEAR_MODEL_HEADERS = ['Manufacturer', 'Model', 'Category', 'RU', 'Width', 'Steck', 'Ports', 'Notes']
+
+export interface GearModelRow {
+  manufacturer: string
+  model: string
+  category: string
+  ru: string
+  width: string
+  steck: string
+  ports: string
+  notes: string
+}
+
+// "Yes", "Y", "X", "True", "1" → yes.
+export function parseYes(text: string): boolean {
+  return /^(y|yes|x|true|1|steck)$/i.test(text.trim())
+}
+
+// "Half", "1/2", "half rack" → half width; anything else is full width.
+export function parseHalfWidth(text: string): boolean {
+  return /half|1\/2|½/i.test(text)
+}
+
+// "2", "2U", "2 RU" → 2. Blank, zero or anything else is no rack size.
+export function parseRu(text: string): number | null {
+  const n = Number(text.trim().match(/^(\d+(?:\.\d+)?)\s*(?:r?u)?$/i)?.[1])
+  return n > 0 ? n : null
+}
+
+export const RU_HEADERS = ['ru', 'rack units', 'rack unit', 'rack space', 'rack size', 'height (ru)', 'size (ru)']
+
+// Header names other lists use for the same columns.
+const MODEL_ALIASES: Record<keyof GearModelRow, string[]> = {
+  manufacturer: ['manufacturer', 'make', 'brand', 'mfr', 'mfg', 'maker'],
+  model: ['model', 'item', 'product'],
+  category: ['category', 'categories', 'department', 'dept', 'section', 'group'],
+  ru: RU_HEADERS,
+  width: ['width', 'rack width', 'half width', 'half-width'],
+  steck: ['steck', 'steck rail', 'stecks'],
+  ports: ['ports', 'port list', 'i/o', 'io', 'connections'],
+  notes: ['notes', 'note', 'comments', 'comment', 'remarks'],
+}
+
+// A model library: one row per manufacturer and model. Later duplicates are skipped.
+export function gearModelsFromCsv(text: string): { rows: GearModelRow[]; warnings: string[] } {
+  const all = parseCsv(text)
+  if (all.length === 0) return { rows: [], warnings: ['The file is empty.'] }
+  const header = all[0].map((h) => h.trim().toLowerCase())
+  const fields = Object.keys(MODEL_ALIASES) as (keyof GearModelRow)[]
+  const col = Object.fromEntries(fields.map((f) => [f, header.findIndex((h) => MODEL_ALIASES[f].includes(h))]))
+  if (col.model < 0) return { rows: [], warnings: ['No "Model" column found.'] }
+  const warnings: string[] = []
+  const seen = new Set<string>()
+  const rows: GearModelRow[] = []
+  all.slice(1).forEach((r, i) => {
+    const row = Object.fromEntries(fields.map((f) => [f, col[f] >= 0 ? (r[col[f]] ?? '').trim() : ''])) as unknown as GearModelRow
+    if (!row.model) {
+      warnings.push(`Row ${i + 2}: no model, skipped.`)
+      return
+    }
+    const key = `${row.manufacturer}|${row.model}`.toLowerCase()
+    if (seen.has(key)) {
+      warnings.push(`Row ${i + 2}: ${row.manufacturer} ${row.model} is in the file twice; only the first was used.`)
+      return
+    }
+    seen.add(key)
+    rows.push(row)
+  })
+  return { rows, warnings }
+}
+
 // RFC 4180-style parser: quoted fields, doubled quotes, CRLF or LF.
 export function parseCsv(text: string): string[][] {
   const rows: string[][] = []

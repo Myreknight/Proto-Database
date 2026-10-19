@@ -1,0 +1,42 @@
+name: Request a feature
+description: Something Proto Database should do, or do differently
+title: "Feature: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for the idea. This repo is public, so leave out anything private about a show.
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like it to do?
+      placeholder: e.g. Print a label for each rack panel with the rack name on it
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: How would you use it?
+      description: Where it fits in your work, and what you do today without it.
+      placeholder: e.g. In shop prep we hand-write these on board tape for every steck
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app?
+      multiple: true
+      options:
+        - Cables
+        - Bundles
+        - Interconnects / racks
+        - Pull List
+        - Labels
+        - Checklists
+        - Cable Types
+        - Show Setup
+        - Saving and opening shows
+        - Something new
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Sketches, photos of labels or paperwork, or examples from other shows help a lot. Drag images in here.

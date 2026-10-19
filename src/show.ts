@@ -1,15 +1,21 @@
 import seedCsv from '../cable_types.csv?raw'
+import seedModelsCsv from '../gear_models.csv?raw'
 import { softenColor } from './colors'
-import { cableTypesFromCsv } from './csv'
+import { cableTypesFromCsv, gearModelsFromCsv, parseHalfWidth, parseRu, parseYes, type GearModelRow } from './csv'
 import { newId } from './ids'
+import { placeUnplaced } from './racking'
 import {
   DEPLOYMENTS,
+  GEAR_CATEGORY_NAMES,
   PARTS,
   ROLES,
   SCHEDULE,
   type Bundle,
   type Cable,
   type CableType,
+  type Gear,
+  type GearCategory,
+  type GearModel,
   type Part,
   type Rack,
   type Segment,
@@ -22,6 +28,29 @@ const STORAGE_KEY = 'proto-database:show'
 
 export function seedCableTypes(): CableType[] {
   return cableTypesFromCsv(seedCsv).types
+}
+
+export function seedGearCategories(): GearCategory[] {
+  return GEAR_CATEGORY_NAMES.map((name) => ({ id: newId(), name }))
+}
+
+export function starterModelRows(): GearModelRow[] {
+  return gearModelsFromCsv(seedModelsCsv).rows
+}
+
+// The starter model library (gear_models.csv), filed under the show's categories by name.
+export function seedGearModels(categories: GearCategory[]): GearModel[] {
+  return starterModelRows().map((r) => ({
+    id: newId(),
+    manufacturer: r.manufacturer,
+    model: r.model,
+    categoryId: categories.find((c) => c.name.trim().toLowerCase() === r.category.toLowerCase())?.id ?? null,
+    ru: parseRu(r.ru),
+    halfWidth: parseHalfWidth(r.width),
+    steck: parseYes(r.steck),
+    ports: r.ports,
+    notes: r.notes,
+  }))
 }
 
 function emptyInfo(): ShowInfo {
@@ -59,6 +88,7 @@ function normalizeInfo(raw: Partial<ShowInfo> | undefined): ShowInfo {
 }
 
 export function newShow(): Show {
+  const gearCategories = seedGearCategories()
   return {
     format: 'proto-database-show',
     formatVersion: 1,
@@ -68,6 +98,9 @@ export function newShow(): Show {
     cables: [],
     bundles: [],
     racks: [],
+    gearCategories,
+    gear: [],
+    gearModels: seedGearModels(gearCategories),
     checks: {},
   }
 }
@@ -101,6 +134,8 @@ export function normalizeShow(raw: unknown): Show {
     id: r.id ?? newId(),
     name: r.name ?? '',
     location: r.location ?? '',
+    size: typeof r.size === 'number' && r.size > 0 ? r.size : null,
+    gearId: typeof r.gearId === 'string' ? r.gearId : null,
     notes: r.notes ?? '',
   }))
   // Shows from before racks were their own records kept a rack name on each cable.
@@ -110,7 +145,7 @@ export function normalizeShow(raw: unknown): Show {
     if (!legacy) return null
     let rack = racks.find((r) => r.name.toLowerCase() === legacy.toLowerCase())
     if (!rack) {
-      rack = { id: newId(), name: legacy, location: '', notes: '' }
+      rack = { id: newId(), name: legacy, location: '', size: null, gearId: null, notes: '' }
       racks.push(rack)
     }
     return rack.id
@@ -146,12 +181,65 @@ export function normalizeShow(raw: unknown): Show {
       flagEnd: c.flagEnd === 'A' || c.flagEnd === 'B' ? c.flagEnd : null,
       steckA: c.steckA === true,
       steckB: c.steckB === true,
+      steckAAt: typeof c.steckAAt === 'string' ? c.steckAAt : '',
+      steckBAt: typeof c.steckBAt === 'string' ? c.steckBAt : '',
       linkId: typeof c.linkId === 'string' ? c.linkId : null,
       linkOrder: typeof c.linkOrder === 'number' ? c.linkOrder : 0,
       notes: c.notes ?? '',
     }
   })
-  return {
+  // Shows from before gear existed get the default categories.
+  let gearCategories: GearCategory[] = Array.isArray(s.gearCategories)
+    ? s.gearCategories.map((g) => ({ id: g.id ?? newId(), name: g.name ?? '' }))
+    : seedGearCategories()
+  const categoryIds = new Set(gearCategories.map((g) => g.id))
+  const rackIds = new Set(racks.map((r) => r.id))
+  const gear: Gear[] = (s.gear ?? []).map((g) => ({
+    id: g.id ?? newId(),
+    name: g.name ?? '',
+    categoryId: g.categoryId && categoryIds.has(g.categoryId) ? g.categoryId : null,
+    manufacturer: g.manufacturer ?? '',
+    model: g.model ?? '',
+    qty: Math.max(1, Math.floor(Number(g.qty) || 1)),
+    rackId: g.rackId && rackIds.has(g.rackId) ? g.rackId : null,
+    rackU: typeof g.rackU === 'number' && g.rackU >= 1 ? Math.floor(g.rackU) : null,
+    rackSide: g.rackSide === 'rear' ? ('rear' as const) : ('front' as const),
+    rackSlot: g.rackSlot === 'left' || g.rackSlot === 'right' ? g.rackSlot : null,
+    notes: g.notes ?? '',
+  }))
+  // Every rack's case is on the gear list; shows from before that get one per rack.
+  const caseIds = new Set<string>()
+  for (const rack of racks) {
+    if (!rack.gearId || !gear.some((g) => g.id === rack.gearId)) {
+      const found = racksCategory(gearCategories)
+      gearCategories = found.categories
+      const unit = rackCase(rack, found.id)
+      gear.push(unit)
+      rack.gearId = unit.id
+    }
+    caseIds.add(rack.gearId)
+  }
+  // A rack case doesn't mount in a rack.
+  for (const g of gear) if (caseIds.has(g.id)) g.rackId = null
+
+  // Shows from before the model library get the starter one.
+  const gearModels: GearModel[] = Array.isArray(s.gearModels)
+    ? s.gearModels
+        .map((m) => ({
+          id: m.id ?? newId(),
+          manufacturer: m.manufacturer ?? '',
+          model: m.model ?? '',
+          categoryId: m.categoryId && categoryIds.has(m.categoryId) ? m.categoryId : null,
+          ru: typeof m.ru === 'number' && m.ru > 0 ? m.ru : null,
+          halfWidth: m.halfWidth === true,
+          steck: m.steck === true,
+          ports: m.ports ?? '',
+          notes: m.notes ?? '',
+        }))
+        .filter((m) => m.model.trim())
+    : seedGearModels(gearCategories)
+  // Gear racked before positions existed is placed top down, in the order it was listed.
+  return placeUnplaced({
     format: 'proto-database-show',
     formatVersion: 1,
     name: s.name ?? 'Untitled Show',
@@ -160,8 +248,11 @@ export function normalizeShow(raw: unknown): Show {
     cables,
     bundles,
     racks,
+    gearCategories,
+    gear,
+    gearModels,
     checks: s.checks && typeof s.checks === 'object' ? s.checks : {},
-  }
+  })
 }
 
 export function loadStoredShow(): Show {
@@ -184,6 +275,21 @@ export function storeShow(show: Show): void {
 
 export function typeById(show: Show, id: string | null): CableType | undefined {
   return id ? show.cableTypes.find((t) => t.id === id) : undefined
+}
+
+// What mounts in a steck at a cable end: the tail's multipin side (for a trunk with a tail
+// there), or the cable's own connector.
+export function steckMount(show: Show, cable: Cable, end: 'A' | 'B'): { tail?: CableType; connector: string } {
+  const type = typeById(show, cable.typeId)
+  const tail = type?.part === 'Trunk' ? typeById(show, end === 'A' ? cable.tailATypeId : cable.tailBTypeId) : undefined
+  if (tail) return { tail, connector: tail.endA }
+  return { connector: (end === 'A' ? type?.endA : type?.endB) ?? '' }
+}
+
+// A G-block or other multipin fills a steck slot by itself; D-size connectors (etherCON,
+// opticalCON DUO, XLR, NL4…) share one, two per rack unit of rail.
+export function fillsSteckSlot(connector: string): boolean {
+  return /multipin|g-?block|socapex|veam|dt12|cam-?lok/i.test(connector)
 }
 
 export function bundleById(show: Show, id: string | null): Bundle | undefined {
@@ -243,6 +349,8 @@ export function newCable(show: Show, overrides: Partial<Cable> = {}): Cable {
     flagEnd: null,
     steckA: false,
     steckB: false,
+    steckAAt: '',
+    steckBAt: '',
     linkId: null,
     linkOrder: 0,
     notes: '',
@@ -288,9 +396,11 @@ export function setTailCells(show: Show, cable: Cable, field: TailField, rows: n
 export function duplicateCable(cable: Cable): Cable {
   return {
     ...cable,
-    // A copy starts outside any linked path.
+    // A copy starts outside any linked path, and not in the original's steck slots.
     linkId: null,
     linkOrder: 0,
+    steckAAt: '',
+    steckBAt: '',
     id: newId(),
     name: cable.name ? `${cable.name} copy` : '',
     segments: cable.segments.map((g) => ({ ...g, id: newId() })),
@@ -459,6 +569,8 @@ export function locations(show: Show): string[] {
     if (b.from) all.add(b.from)
     if (b.to) all.add(b.to)
   }
+  // Gear names too, so typing an end can link it to a device.
+  for (const g of show.gear) if (g.name.trim()) all.add(g.name.trim())
   return [...all].sort((a, b) => a.localeCompare(b))
 }
 
@@ -482,8 +594,94 @@ export function ensureRack(show: Show, name: string): { show: Show; rackId: stri
   if (!trimmed) return { show, rackId: null }
   const existing = show.racks.find((r) => r.name.trim().toLowerCase() === trimmed.toLowerCase())
   if (existing) return { show, rackId: existing.id }
-  const rack: Rack = { id: newId(), name: trimmed, location: '', notes: '' }
-  return { show: { ...show, racks: [...show.racks, rack] }, rackId: rack.id }
+  const added = addRack(show, { name: trimmed })
+  return { show: added.show, rackId: added.rack.id }
+}
+
+// The rack case is gear too: it goes on the gear list under Racks, named after the rack,
+// with a model like "12U rack" that follows the rack's size until it's changed by hand.
+export const rackCaseModel = (size: number | null) => (size ? `${size}U rack` : 'Rack')
+const AUTO_RACK_MODEL = /^(\d+(\.\d+)?U rack|Rack)?$/
+
+function racksCategory(categories: GearCategory[]): { categories: GearCategory[]; id: string } {
+  const found = categories.find((c) => c.name.trim().toLowerCase() === 'racks')
+  if (found) return { categories, id: found.id }
+  const created = { id: newId(), name: 'Racks' }
+  return { categories: [...categories, created], id: created.id }
+}
+
+function rackCase(rack: Rack, categoryId: string): Gear {
+  return {
+    id: newId(),
+    name: rack.name,
+    categoryId,
+    manufacturer: '',
+    model: rackCaseModel(rack.size),
+    qty: 1,
+    rackId: null,
+    rackU: null,
+    rackSide: 'front',
+    rackSlot: null,
+    notes: '',
+  }
+}
+
+// Adds a rack, and its case to the gear list.
+export function addRack(show: Show, fields: Partial<Omit<Rack, 'gearId'>> = {}): { show: Show; rack: Rack } {
+  const { categories, id: categoryId } = racksCategory(show.gearCategories)
+  const base: Rack = { id: newId(), name: '', location: '', size: null, gearId: null, notes: '', ...fields }
+  const unit = rackCase(base, categoryId)
+  const rack = { ...base, gearId: unit.id }
+  return {
+    show: { ...show, racks: [...show.racks, rack], gearCategories: categories, gear: [...show.gear, unit] },
+    rack,
+  }
+}
+
+// Changes a rack, carrying its name and size over to its case on the gear list.
+export function updateRack(show: Show, rackId: string, changes: Partial<Omit<Rack, 'id' | 'gearId'>>): Show {
+  const rack = show.racks.find((r) => r.id === rackId)
+  if (!rack) return show
+  const next = { ...rack, ...changes }
+  return {
+    ...show,
+    racks: show.racks.map((r) => (r.id === rackId ? next : r)),
+    gear: show.gear.map((g) => {
+      if (g.id !== rack.gearId) return g
+      const model = 'size' in changes && AUTO_RACK_MODEL.test(g.model.trim()) ? rackCaseModel(next.size) : g.model
+      return { ...g, name: next.name, model }
+    }),
+  }
+}
+
+// The rack a gear unit is the case of, if it's one.
+export function rackOfCase(show: Show, gearId: string): Rack | undefined {
+  return show.racks.find((r) => r.gearId === gearId)
+}
+
+// What deleting a rack takes with it, and what stays behind.
+export function rackDeleteMessage(show: Show, rack: Rack): string {
+  const cables = rackCables(show, rack.id).length
+  const gear = show.gear.filter((g) => g.rackId === rack.id).length
+  const kept = [
+    cables ? `${cables} interconnect(s) stay interconnects with no rack` : '',
+    gear ? `${gear} gear entr${gear === 1 ? 'y stays' : 'ies stay'} in the show with no rack` : '',
+  ].filter(Boolean)
+  return `Delete ${rack.name || 'this rack'}? Its case comes off the gear list${kept.length ? `; its ${kept.join(', and its ')}` : ''}.`
+}
+
+// Deletes a rack and its case. Its interconnects and gear stay in the show, with no rack.
+export function deleteRack(show: Show, rackId: string): Show {
+  const rack = show.racks.find((r) => r.id === rackId)
+  if (!rack) return show
+  return {
+    ...show,
+    racks: show.racks.filter((r) => r.id !== rackId),
+    cables: show.cables.map((c) => (c.rackId === rackId ? { ...c, rackId: null } : c)),
+    gear: show.gear
+      .filter((g) => g.id !== rack.gearId)
+      .map((g) => (g.rackId === rackId ? { ...g, rackId: null, rackU: null, rackSlot: null } : g)),
+  }
 }
 
 // Makes a cable an interconnect in a rack.

@@ -7,12 +7,25 @@ interface Props {
   initial: string
   suggestions: string[]
   confirmLabel: string
+  cancelLabel?: string
+  inputMode?: 'numeric'
   onConfirm: (value: string) => void
   onCancel: () => void
 }
 
 // A one-field prompt, e.g. asking which rack an interconnect lives in.
-export function PromptDialog({ title, detail, label, initial, suggestions, confirmLabel, onConfirm, onCancel }: Props) {
+export function PromptDialog({
+  title,
+  detail,
+  label,
+  initial,
+  suggestions,
+  confirmLabel,
+  cancelLabel = 'Skip',
+  inputMode,
+  onConfirm,
+  onCancel,
+}: Props) {
   const [value, setValue] = useState(initial)
   const listId = 'prompt-suggestions'
 
@@ -33,6 +46,7 @@ export function PromptDialog({ title, detail, label, initial, suggestions, confi
           <input
             autoFocus
             list={listId}
+            inputMode={inputMode}
             value={value}
             onFocus={(e) => e.currentTarget.select()}
             onChange={(e) => setValue(e.target.value)}
@@ -55,7 +69,7 @@ export function PromptDialog({ title, detail, label, initial, suggestions, confi
         )}
         <div className="dialog-actions">
           <button type="button" onClick={onCancel}>
-            Skip
+            {cancelLabel}
           </button>
           <button type="submit" className="primary">
             {confirmLabel}
