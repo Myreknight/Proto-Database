@@ -2,15 +2,26 @@ import { useState, type ReactNode } from 'react'
 import type { Update } from '../App'
 import { gearModelsFromCsv, parseRu } from '../csv'
 import { downloadText, pickTextFile, safeFilename } from '../files'
-import { applyStarterModels, gearModelsToCsv, mergeGearModels, modelKey, renameGearModel, starterChanges } from '../gear'
+import {
+  addUnitsOfModel,
+  applyStarterModels,
+  gearModelsToCsv,
+  mergeGearModels,
+  modelKey,
+  renameGearModel,
+  starterChanges,
+} from '../gear'
 import { newId } from '../ids'
 import { expandPorts } from '../ports'
 import type { GearModel, Show } from '../types'
+import { AddFromModelDialog } from './AddFromModelDialog'
 
 interface Props {
   show: Show
   update: Update
   toolbar: ReactNode
+  // After gear of a model is added: show it in Units.
+  onAdded: (gearId: string) => void
 }
 
 // Keeps a draft while typing, so renaming a model (and its units) happens once, on blur.
@@ -45,10 +56,11 @@ function DraftInput({
   )
 }
 
-export function GearModelsView({ show, update, toolbar }: Props) {
+export function GearModelsView({ show, update, toolbar, onAdded }: Props) {
   const [query, setQuery] = useState('')
   const [notice, setNotice] = useState<string | null>(null)
   const [newModelId, setNewModelId] = useState<string | null>(null)
+  const [adding, setAdding] = useState<GearModel | null>(null)
   const starter = starterChanges(show)
 
   const units = new Map<string, number>()
@@ -276,7 +288,15 @@ export function GearModelsView({ show, update, toolbar }: Props) {
                     <input className="notes" value={m.notes} onChange={(e) => patchModel(m.id, { notes: e.target.value })} />
                   </td>
                   <td className="num muted">{used || ''}</td>
-                  <td className="num">
+                  <td className="num nowrap">
+                    <button
+                      className="small add-unit"
+                      disabled={!m.model.trim()}
+                      title={`Add gear of this model to the show`}
+                      onClick={() => setAdding(m)}
+                    >
+                      Add
+                    </button>
                     <button
                       className="icon"
                       title="Delete model"
@@ -295,6 +315,19 @@ export function GearModelsView({ show, update, toolbar }: Props) {
           <p className="muted pad">{show.gearModels.length ? `No models match “${query}”.` : 'No models yet.'}</p>
         )}
       </div>
+      {adding && (
+        <AddFromModelDialog
+          show={show}
+          model={adding}
+          onCancel={() => setAdding(null)}
+          onAdd={(opts) => {
+            const result = addUnitsOfModel(show, adding, opts)
+            update(() => result.show)
+            setAdding(null)
+            onAdded(result.gearId)
+          }}
+        />
+      )}
     </section>
   )
 }

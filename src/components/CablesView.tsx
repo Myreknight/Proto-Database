@@ -174,8 +174,8 @@ export function CablesView({ show, update, selectedId, onSelect, onOpenBundle, o
     <div className={selected ? 'split' : 'split no-editor'}>
       <section className="pane">
         <div className="toolbar">
-          <button className="primary" onClick={addCable}>
-            Add cable
+          <button className="primary" onClick={addCable} title="Add a cable (press N from anywhere)">
+            Add cable <kbd className="key">N</kbd>
           </button>
           <input
             className="search"

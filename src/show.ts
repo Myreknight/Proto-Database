@@ -3,6 +3,7 @@ import seedModelsCsv from '../gear_models.csv?raw'
 import { softenColor } from './colors'
 import { cableTypesFromCsv, gearModelsFromCsv, parseHalfWidth, parseRu, parseYes, type GearModelRow } from './csv'
 import { newId } from './ids'
+import { gearMatcher } from './match'
 import { placeUnplaced } from './racking'
 import {
   DEPLOYMENTS,
@@ -546,19 +547,25 @@ export function describeLength(cable: Cable): string {
   return `${parts.join(' + ')}${total != null ? ` = ${total}'` : ''}`
 }
 
+// Places in the show, for location fields: where bundles and racks are, and cable ends
+// that name a place. Ends that name gear ("Switch 1 · 24") are patch points, not places.
 export function locations(show: Show): string[] {
+  const isGear = gearMatcher(show.gear)
   const all = new Set<string>()
+  const add = (text: string) => {
+    const t = text.trim()
+    if (t && !isGear(t)) all.add(t)
+  }
   for (const c of show.cables) {
-    if (c.from) all.add(c.from)
-    if (c.to) all.add(c.to)
+    add(c.from)
+    add(c.to)
   }
   for (const b of show.bundles) {
-    if (b.from) all.add(b.from)
-    if (b.to) all.add(b.to)
+    add(b.from)
+    add(b.to)
   }
-  // Gear names too, so typing an end can link it to a device.
-  for (const g of show.gear) if (g.name.trim()) all.add(g.name.trim())
-  return [...all].sort((a, b) => a.localeCompare(b))
+  for (const r of show.racks) add(r.location)
+  return [...all].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
 }
 
 export function rackById(show: Show, id: string | null): Rack | undefined {

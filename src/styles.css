@@ -2469,3 +2469,96 @@ th.center {
   background: var(--surface);
   margin-bottom: 6px;
 }
+
+/* A keyboard shortcut shown on a button */
+kbd.key {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 11px;
+  line-height: 16px;
+  opacity: 0.75;
+  border: 1px solid currentColor;
+}
+
+button.add-unit {
+  padding: 2px 9px;
+  margin-right: 4px;
+}
+
+/* Picking several pieces of gear */
+
+.picker-dialog {
+  width: 560px;
+}
+
+.picker-search {
+  width: 100%;
+  margin: 6px 0 8px;
+}
+
+.picker-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  max-height: 50vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.picker-group {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  background: var(--surface-2);
+}
+
+.picker-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  border-top: 1px solid var(--border);
+}
+
+.picker-row:hover {
+  background: var(--surface-2);
+}
+
+.picker-row.picked {
+  background: var(--accent-soft);
+}
+
+.picker-row input {
+  pointer-events: none;
+  margin: 0;
+}
+
+.picker-name {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.picker-detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker-actions {
+  align-items: center;
+}

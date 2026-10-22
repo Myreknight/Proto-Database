@@ -9,6 +9,7 @@ import { LabelsView } from './components/LabelsView'
 import { PullListView } from './components/PullListView'
 import { RacksView } from './components/RacksView'
 import { ShowSetupView } from './components/ShowSetupView'
+import { MushroomIcon, PixelHud } from './components/PixelDecor'
 import { AmpDisplay, AmpTitleBar } from './components/WinampDecor'
 import { downloadText, pickTextFile, safeFilename } from './files'
 import { gearNames, patchReport } from './gear'
@@ -18,6 +19,7 @@ import {
   flagReversedCount,
   loadStoredShow,
   locations,
+  newCable,
   newShow,
   normalizeShow,
   storeShow,
@@ -28,14 +30,25 @@ export type Update = (fn: (show: Show) => Show) => void
 
 type Tab = 'setup' | 'cables' | 'bundles' | 'racks' | 'gear' | 'pull' | 'labels' | 'checks' | 'types'
 
-// The Winamp skin is a per-viewer joke, so it lives in browser storage, not the show.
-const SKIN_KEY = 'proto-database:skin'
+// Whether a key press is going into a text field (where N is just a letter).
+function isTyping(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  if (target.isContentEditable || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return true
+  if (target.tagName !== 'INPUT') return false
+  return !['checkbox', 'radio', 'button', 'submit', 'range', 'color'].includes((target as HTMLInputElement).type)
+}
 
-function loadSkin(): boolean {
+// The skins are a per-viewer joke, so they live in browser storage, not the show. ⚡ flips
+// Winamp; the mushroom tucked in the bottom-right corner flips 8-bit.
+const SKIN_KEY = 'proto-database:skin'
+type Skin = 'default' | 'winamp' | 'pixel'
+
+function loadSkin(): Skin {
   try {
-    return localStorage.getItem(SKIN_KEY) === 'winamp'
+    const skin = localStorage.getItem(SKIN_KEY)
+    return skin === 'winamp' || skin === 'pixel' ? skin : 'default'
   } catch {
-    return false
+    return 'default'
   }
 }
 
@@ -47,21 +60,24 @@ export default function App() {
   const [selectedBundleId, setSelectedBundleId] = useState<string | null>(null)
   const [selectedRackId, setSelectedRackId] = useState<string | null>(null)
   const [selectedGearId, setSelectedGearId] = useState<string | null>(null)
-  const [winamp, setWinamp] = useState(loadSkin)
+  const [skin, setSkin] = useState<Skin>(loadSkin)
+  const winamp = skin === 'winamp'
+  const pixel = skin === 'pixel'
 
   useEffect(() => {
-    document.documentElement.dataset.skin = winamp ? 'winamp' : 'default'
+    document.documentElement.dataset.skin = skin
     try {
-      localStorage.setItem(SKIN_KEY, winamp ? 'winamp' : 'default')
+      localStorage.setItem(SKIN_KEY, skin)
     } catch {
       // Storage blocked: the skin just won't be remembered.
     }
-  }, [winamp])
+  }, [skin])
 
   useEffect(() => storeShow(show), [show])
 
   // Which cable ends and patch cells land on which gear ports, shared by every tab.
   const patches = useMemo(() => patchReport(show), [show])
+  const places = useMemo(() => locations(show), [show])
 
   const update: Update = useCallback((fn) => dispatch({ type: 'update', fn, at: now(), field: typingField() }), [])
   const replaceShow = (next: Show) => dispatch({ type: 'replace', show: next, at: now() })
@@ -95,6 +111,26 @@ export default function App() {
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
   }, [saveShow, undo, redo])
+
+  // A new cable from anywhere, opened in the Cables tab with its name ready to type.
+  const addCable = useCallback(() => {
+    const cable = newCable(show)
+    update((s) => ({ ...s, cables: [...s.cables, cable] }))
+    setSelectedCableId(cable.id)
+    setTab('cables')
+  }, [show, update])
+
+  useEffect(() => {
+    // N adds a cable, unless you're typing in a field or a dialog is open.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== 'n' || e.metaKey || e.ctrlKey || e.altKey || e.repeat) return
+      if (isTyping(e.target) || document.querySelector('.dialog-backdrop')) return
+      e.preventDefault()
+      addCable()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [addCable])
 
   const startNewShow = () => {
     if (
@@ -171,6 +207,7 @@ export default function App() {
   return (
     <div className="app">
       {winamp && <AmpTitleBar />}
+      {pixel && <PixelHud show={show} tab={tab} />}
       <header className="topbar">
         <div className="brand">
           Proto Database <span className="version">v{__APP_VERSION__}</span>
@@ -186,7 +223,7 @@ export default function App() {
           value={show.name}
           onChange={(e) => update((s) => ({ ...s, name: e.target.value }))}
         />
-        {winamp && <AmpDisplay show={show} />}
+        {(winamp || pixel) && <AmpDisplay show={show} />}
         <div className="file-actions">
           <button
             className="icon-btn"
@@ -211,7 +248,7 @@ export default function App() {
             aria-pressed={winamp}
             aria-label="Winamp skin"
             title={winamp ? 'Back to the classic skin' : 'Winamp skin (looks only, nothing else changes)'}
-            onClick={() => setWinamp((on) => !on)}
+            onClick={() => setSkin((s) => (s === 'winamp' ? 'default' : 'winamp'))}
           >
             ⚡
           </button>
@@ -294,8 +331,15 @@ export default function App() {
         {tab === 'types' && <CableTypesView show={show} update={update} />}
       </main>
 
+      {/* Location fields (racks, bundles) suggest places only. */}
       <datalist id="locations">
-        {[...locations(show), ...patches.freePorts].map((l) => (
+        {places.map((l) => (
+          <option key={l} value={l} />
+        ))}
+      </datalist>
+      {/* A cable's From/To can be a place or a device's port. */}
+      <datalist id="cable-ends">
+        {[...new Set([...places, ...gearNames(show), ...patches.freePorts])].map((l) => (
           <option key={l} value={l} />
         ))}
       </datalist>
@@ -309,6 +353,17 @@ export default function App() {
           <option key={n} value={n} />
         ))}
       </datalist>
+
+      {/* The 8-bit skin's switch: a mushroom, tucked away in the corner. */}
+      <button
+        className="mushroom-toggle"
+        aria-pressed={pixel}
+        aria-label="8-bit skin"
+        title={pixel ? 'Back to the classic skin' : '8-bit skin (looks only, nothing else changes)'}
+        onClick={() => setSkin((s) => (s === 'pixel' ? 'default' : 'pixel'))}
+      >
+        <MushroomIcon />
+      </button>
     </div>
   )
 }

@@ -451,7 +451,7 @@ export function CableEditor({ show, cable, update, onClose, onSelect, onOpenGear
           <label className="field">
             <span>From (End A)</span>
             <input
-              list="locations"
+              list="cable-ends"
               className={pointClass(pointAt('from')) || undefined}
               value={cable.from}
               placeholder="e.g. Amp Room"
@@ -462,7 +462,7 @@ export function CableEditor({ show, cable, update, onClose, onSelect, onOpenGear
           <label className="field">
             <span>To (End B)</span>
             <input
-              list="locations"
+              list="cable-ends"
               className={pointClass(pointAt('to')) || undefined}
               value={cable.to}
               placeholder="e.g. Box Boom HL"

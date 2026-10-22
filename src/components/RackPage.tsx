@@ -28,6 +28,7 @@ import {
 } from '../show'
 import { loadViewSetting, storeViewSetting } from '../sorting'
 import type { Rack, RackSide, RackSlot, Show } from '../types'
+import { GearPickerDialog } from './GearPickerDialog'
 import { RackDrawing } from './RackDrawing'
 
 interface Props {
@@ -43,6 +44,7 @@ interface Props {
 const VIEW_KEY = 'proto-database:rack-page-view'
 
 export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear }: Props) {
+  const [picking, setPicking] = useState(false)
   const [view, setView] = useState<RackView>(() => loadViewSetting(VIEW_KEY, { view: 'elevation' as RackView }).view)
   useEffect(() => storeViewSetting(VIEW_KEY, { view }), [view])
   const flow = useMemo(() => (view === 'flow' ? rackFlow(show, rack) : null), [view, show, rack])
@@ -314,24 +316,28 @@ export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear 
             </ol>
           )}
           <div className="link-controls">
-            <select
-              value=""
-              onChange={(e) => e.target.value && update((s) => setGearRack(s, e.target.value, rack.id))}
+            <button
+              className="primary"
+              onClick={() => setPicking(true)}
               disabled={otherGear.length === 0}
+              title="Pick several: click, Shift-click a range, or drag down the list"
             >
-              <option value="">Add gear to rack…</option>
-              {otherGear.map((g) => {
-                const current = rackById(show, g.rackId)
-                return (
-                  <option key={g.id} value={g.id}>
-                    {gearLabel(g)}
-                    {current ? ` (moves from ${current.name || 'another rack'})` : ''}
-                  </option>
-                )
-              })}
-            </select>
+              Add gear…
+            </button>
             <button onClick={addNewGear}>+ New gear</button>
           </div>
+          {picking && (
+            <GearPickerDialog
+              show={show}
+              rack={rack}
+              onCancel={() => setPicking(false)}
+              onAdd={(ids) => {
+                // Placed one after another, top down, in the order they were listed.
+                update((s) => ids.reduce((acc, id) => setGearRack(acc, id, rack.id), s))
+                setPicking(false)
+              }}
+            />
+          )}
 
           <h3>
             On steck rails <span className="muted">({tails.length})</span>

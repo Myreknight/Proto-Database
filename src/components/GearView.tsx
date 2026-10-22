@@ -146,7 +146,19 @@ export function GearView({ show, patches, update, selectedId, onSelect, onOpenCa
     </div>
   )
 
-  if (view.mode === 'models') return <GearModelsView show={show} update={update} toolbar={modeSwitch} />
+  if (view.mode === 'models') {
+    return (
+      <GearModelsView
+        show={show}
+        update={update}
+        toolbar={modeSwitch}
+        onAdded={(id) => {
+          setView((v) => ({ ...v, mode: 'units' }))
+          onSelect(id)
+        }}
+      />
+    )
+  }
 
   if (view.mode === 'list') {
     const sections = gearList(show)

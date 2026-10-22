@@ -4,7 +4,7 @@ import { endConnectors } from './labels'
 import { gearMatcher, type GearHit } from './match'
 import { gearModelOf, gearRu, modelKey } from './models'
 import { expandPorts, findPort, portKey, portsAfter, textSeries } from './ports'
-import { frontRowsUsed, placeUnplaced } from './racking'
+import { frontRowsUsed, placeGear, placeUnplaced } from './racking'
 import { ensureRack, fillsSteckSlot, rackById, starterModelRows, steckMount, visibleTails } from './show'
 import type { Cable, Gear, GearCategory, GearModel, Show } from './types'
 
@@ -460,6 +460,48 @@ const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 // Copies of a unit, numbered on from the highest one already in the show: copying
 // Amp 1 when Amp 2 exists makes Amp 3, Amp 4…. A name without a number gets " 2", " 3"….
+// The name to suggest for the next unit of a model: one past the highest numbered unit of
+// it already in the show ("Amp 5" after Amp 1–4), or nothing if none are numbered.
+export function nextUnitName(show: Show, model: Pick<GearModel, 'manufacturer' | 'model'>): string {
+  const key = modelKey(model.manufacturer, model.model)
+  let prefix = ''
+  let width = 0
+  let highest = 0
+  for (const g of show.gear) {
+    if (modelKey(g.manufacturer, g.model) !== key) continue
+    const m = g.name.trim().match(/^(.*?)(\d+)$/)
+    if (m && Number(m[2]) >= highest) {
+      prefix = m[1]
+      width = m[2].startsWith('0') ? m[2].length : 0
+      highest = Number(m[2])
+    }
+  }
+  return highest ? `${prefix}${String(highest + 1).padStart(width, '0')}` : ''
+}
+
+// Adds gear of a library model: named units numbered on from the name given ("Amp 5",
+// "Amp 6"…), or with no name, one bulk line of that many. Optionally into a rack, each
+// with a spot. Returns the show and the first new unit.
+export function addUnitsOfModel(
+  show: Show,
+  model: GearModel,
+  { name, count, rackId }: { name: string; count: number; rackId: string | null },
+): { show: Show; gearId: string } {
+  const named = name.trim()
+  const first = newGear({
+    name: named,
+    manufacturer: model.manufacturer.trim(),
+    model: model.model.trim(),
+    categoryId: model.categoryId,
+    qty: named ? 1 : Math.max(1, count),
+    rackId,
+  })
+  let next: Show = { ...show, gear: [...show.gear, first] }
+  if (rackId) next = placeGear(next, first.id)
+  if (named && count > 1) next = copyGear(next, first.id, count - 1)
+  return { show: next, gearId: first.id }
+}
+
 export function copyGear(show: Show, gearId: string, count: number): Show {
   const index = show.gear.findIndex((g) => g.id === gearId)
   const unit = show.gear[index]
