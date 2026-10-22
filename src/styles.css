@@ -2353,3 +2353,119 @@ th.center {
     position: static;
   }
 }
+
+/* Dragging units around a rack drawing */
+
+.rack-drawing.rd-draggable {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.rack-drawing .rd-grab {
+  cursor: grab;
+}
+
+.rack-drawing.rd-dragging-on,
+.rack-drawing.rd-dragging-on .rd-grab {
+  cursor: grabbing;
+}
+
+.rack-drawing .rd-lifted {
+  opacity: 0.35;
+}
+
+.rack-drawing .rd-ghost rect {
+  fill: var(--accent-soft);
+  fill-opacity: 0.85;
+  stroke: var(--accent);
+  stroke-width: 0.12;
+  stroke-dasharray: 0.4 0.25;
+  pointer-events: none;
+}
+
+.rack-drawing .rd-ghost text {
+  fill: var(--accent);
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.rack-drawing .rd-ghost.bad rect {
+  fill: color-mix(in srgb, var(--danger) 18%, transparent);
+  stroke: var(--danger);
+}
+
+.rack-drawing .rd-ghost.bad text {
+  fill: var(--danger);
+}
+
+/* Flow diagrams */
+
+.rack-drawing .rd-wire {
+  stroke: var(--text);
+  stroke-width: 0.07;
+  stroke-linecap: round;
+}
+
+.rack-drawing .rd-bus {
+  stroke: var(--text);
+  stroke-width: 0.2;
+}
+
+.layout-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0 8px;
+}
+
+.sheet-flow {
+  margin-top: 20px;
+}
+
+.flow-head {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.sheet-flow .rack-drawing {
+  max-height: 80vh;
+}
+
+@media print {
+  .sheet-flow {
+    break-before: page;
+    margin-top: 0;
+  }
+
+  .sheet-flow .rack-drawing {
+    max-height: 7in;
+  }
+
+  .rack-drawing .rd-wire,
+  .rack-drawing .rd-bus {
+    stroke: #000;
+  }
+}
+
+/* The flow view takes the page's width; the rack's lists follow below it. */
+.rack-page-body.wide {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.rack-page-body.wide .rack-layout {
+  position: static;
+}
+
+.rack-page-body.wide .rack-contents {
+  max-width: 640px;
+}
+
+.flow-scroll {
+  overflow: auto;
+  max-height: 72vh;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  margin-bottom: 6px;
+}

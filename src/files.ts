@@ -24,3 +24,12 @@ export function pickTextFile(accept: string): Promise<string | null> {
 export function safeFilename(name: string): string {
   return name.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'Untitled Show'
 }
+
+export function downloadBytes(filename: string, bytes: Uint8Array, mime: string): void {
+  const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: mime }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}

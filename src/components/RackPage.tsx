@@ -1,8 +1,10 @@
+import { useEffect, useMemo, useState } from 'react'
 import type { Update } from '../App'
 import { parseRu } from '../csv'
 import { rackDrawing } from '../drawing'
 import { gearLabel, gearModelOf, gearRu, newGear, patchReport, rackGear, rackRu } from '../gear'
-import { downloadRackDxf, downloadRackSvg } from '../rackExport'
+import { rackFlow } from '../flow'
+import { downloadRackDxf, downloadRackPdf, downloadRackSvg, type RackView } from '../rackExport'
 import {
   isHalfWidth,
   nudgeGear,
@@ -24,6 +26,7 @@ import {
   updateRack,
   visibleTails,
 } from '../show'
+import { loadViewSetting, storeViewSetting } from '../sorting'
 import type { Rack, RackSide, RackSlot, Show } from '../types'
 import { RackDrawing } from './RackDrawing'
 
@@ -36,7 +39,13 @@ interface Props {
   onOpenGear: (id: string) => void
 }
 
+// Which drawing the rack page shows, remembered per viewer.
+const VIEW_KEY = 'proto-database:rack-page-view'
+
 export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear }: Props) {
+  const [view, setView] = useState<RackView>(() => loadViewSetting(VIEW_KEY, { view: 'elevation' as RackView }).view)
+  useEffect(() => storeViewSetting(VIEW_KEY, { view }), [view])
+  const flow = useMemo(() => (view === 'flow' ? rackFlow(show, rack) : null), [view, show, rack])
   const cables = rackCables(show, rack.id)
   const others = show.cables.filter((c) => !cables.includes(c))
   const gear = rackGear(show, rack.id)
@@ -119,10 +128,24 @@ export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear 
           <span className="muted">U</span>
         </label>
         <span className="spacer" />
-        <button onClick={() => downloadRackSvg(show, rack)} title="Front and rear drawing at true scale">
+        <button
+          onClick={() => downloadRackPdf(show, rack)}
+          title="Elevation with the parts list, then the flow, on landscape letter pages"
+        >
+          PDF
+        </button>
+        <button
+          onClick={() => downloadRackSvg(show, rack, undefined, view)}
+          disabled={view === 'flow' && !flow}
+          title={`The ${view === 'flow' ? 'flow' : 'front and rear elevation'} as SVG`}
+        >
           SVG
         </button>
-        <button onClick={() => downloadRackDxf(show, rack)} title="Front and rear drawing at true scale, for CAD">
+        <button
+          onClick={() => downloadRackDxf(show, rack, undefined, view)}
+          disabled={view === 'flow' && !flow}
+          title={`The ${view === 'flow' ? 'flow' : 'front and rear elevation'} as DXF, for CAD`}
+        >
           DXF
         </button>
         <button className="danger" onClick={remove}>
@@ -130,24 +153,58 @@ export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear 
         </button>
       </div>
 
-      <div className="rack-page-body">
+      <div className={view === 'flow' ? 'rack-page-body wide' : 'rack-page-body'}>
         <div className="rack-layout">
-          <h3>
-            Layout{' '}
-            <span className={over || problems.size ? 'warn' : 'muted'}>
-              ({used}
-              {rack.size ? ` of ${rack.size}` : ''}U used on the front)
-            </span>
-          </h3>
-          {placed.length > 0 || rack.size ? (
-            <RackDrawing drawing={rackDrawing(show, rack)} label={`${rack.name} front and rear`} onOpenGear={onOpenGear} />
+          <div className="layout-head">
+            <div className="segmented">
+              <button className={view === 'elevation' ? 'active' : ''} onClick={() => setView('elevation')}>
+                Elevation
+              </button>
+              <button className={view === 'flow' ? 'active' : ''} onClick={() => setView('flow')}>
+                Flow
+              </button>
+            </div>
+            {view === 'elevation' && (
+              <span className={over || problems.size ? 'warn small' : 'muted small'}>
+                {used}
+                {rack.size ? ` of ${rack.size}` : ''}U used on the front
+              </span>
+            )}
+          </div>
+          {view === 'flow' ? (
+            flow ? (
+              <>
+                <div className="flow-scroll">
+                  <RackDrawing drawing={flow} label={`${rack.name} flow`} onOpenGear={onOpenGear} scale={20} />
+                </div>
+                <p className="muted small">
+                  How cables run in and out of the rack: between its gear, to its steck slots, and out to each bundle's
+                  line. Arrows run from each cable's End A to End B. Click a box to open that gear.
+                </p>
+              </>
+            ) : (
+              <p className="muted small">
+                Nothing to draw yet. Link cable ends and patch cells to this rack's gear (start them with a gear name,
+                like “Amp 1-A”), or mount cable ends on its steck rails.
+              </p>
+            )
+          ) : placed.length > 0 || rack.size ? (
+            <RackDrawing
+              drawing={rackDrawing(show, rack)}
+              label={`${rack.name} front and rear`}
+              onOpenGear={onOpenGear}
+              onMove={(id, spot) => update((s) => setRackPosition(s, id, spot))}
+              checkDrop={(id, spot) => rackProblems(setRackPosition(show, id, spot), rack).get(id) ?? null}
+            />
           ) : (
             <p className="muted small">Set the rack's size and add gear with rack sizes to draw it.</p>
           )}
-          <p className="muted small">
-            U1 is at the bottom. From the rear, front-mounted gear shows as dashed backs and half-width gear swaps
-            sides. Click a unit to open it. Print every rack from Racks → Drawings.
-          </p>
+          {view === 'elevation' && (
+            <p className="muted small">
+              Drag a unit to move it; drop it in the other view to move it to those rails. U1 is at the bottom. From the
+              rear, front-mounted gear shows as dashed backs and half-width gear swaps sides. Click a unit to open it.
+            </p>
+          )}
         </div>
 
         <div className="rack-contents">

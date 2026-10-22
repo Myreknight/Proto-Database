@@ -1,9 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { flushSync } from 'react-dom'
 import { rackDrawing } from '../drawing'
-import { gearLabel, gearRu, rackGear } from '../gear'
-import { downloadRackDxf, downloadRackSvg, rackSummary } from '../rackExport'
-import { placedIn, rackProblems, topOf } from '../racking'
+import { rackFlow } from '../flow'
+import { downloadRackDxf, downloadRackPdf, downloadRacksPdf, downloadRackSvg, rackParts, rackSummary } from '../rackExport'
 import type { Rack, Show } from '../types'
 import { PrintHeader } from './PrintHeader'
 import { RackDrawing } from './RackDrawing'
@@ -20,11 +19,8 @@ const PRINT_PAGE = '@media print { @page { size: letter landscape; margin: 0.4in
 const today = () => new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
 
 function RackSheet({ show, rack, date, onOpenGear }: { show: Show; rack: Rack; date: string; onOpenGear: (id: string) => void }) {
-  const placed = placedIn(show, rack.id).sort((a, b) => topOf(b) - topOf(a) || (a.side === 'front' ? -1 : 1))
-  const problems = rackProblems(show, rack)
-  const unplaced = rackGear(show, rack.id).filter((g) => !placed.some((p) => p.gear.id === g.id))
   const name = rack.name || 'Unnamed rack'
-
+  const flow = rackFlow(show, rack)
   return (
     <section className="rack-sheet">
       <PrintHeader show={show} title={`Rack Drawing · ${name}`} meta={[rackSummary(show, rack), date, `Proto Database v${__APP_VERSION__}`]} />
@@ -33,6 +29,7 @@ function RackSheet({ show, rack, date, onOpenGear }: { show: Show; rack: Rack; d
           {name} <span className="muted">· {rackSummary(show, rack)}</span>
         </h3>
         <span className="spacer" />
+        <button onClick={() => downloadRackPdf(show, rack, date)}>PDF</button>
         <button onClick={() => downloadRackSvg(show, rack, date)}>SVG</button>
         <button onClick={() => downloadRackDxf(show, rack, date)}>DXF</button>
       </div>
@@ -51,37 +48,33 @@ function RackSheet({ show, rack, date, onOpenGear }: { show: Show; rack: Rack; d
             </tr>
           </thead>
           <tbody>
-            {placed.map((p) => {
-              const g = p.gear
-              const problem = problems.get(g.id)
-              return (
-                <tr key={g.id} className={problem ? 'warn' : undefined} title={problem}>
-                  <td className="nowrap">{p.height > 1 ? `${topOf(p)}–${p.bottom}` : p.bottom}</td>
-                  <td className="nowrap">
-                    {p.side === 'front' ? 'Front' : 'Rear'}
-                    {p.slot && ` ${p.slot === 'left' ? 'L' : 'R'}`}
-                  </td>
-                  <td className="strong">
-                    {problem && '⚠ '}
-                    {g.name.trim() ? `${g.name.trim()}${g.qty > 1 ? ` ×${g.qty}` : ''}` : g.qty > 1 ? `${g.qty} pcs` : '—'}
-                  </td>
-                  <td>{[g.manufacturer, g.model].map((v) => v.trim()).filter(Boolean).join(' ')}</td>
-                  <td className="num">{p.height}</td>
-                </tr>
-              )
-            })}
-            {unplaced.map((g) => (
-              <tr key={g.id} className="muted">
-                <td>—</td>
-                <td />
-                <td>{gearLabel(g)}</td>
-                <td>{[g.manufacturer, g.model].map((v) => v.trim()).filter(Boolean).join(' ')}</td>
-                <td className="num">{gearRu(show, g) ? 'not placed' : 'no size'}</td>
+            {rackParts(show, rack).map((row) => (
+              <tr
+                key={row.gearId}
+                className={row.problem ? 'warn' : row.placed ? undefined : 'muted'}
+                title={row.problem ?? undefined}
+              >
+                <td className="nowrap">{row.u}</td>
+                <td className="nowrap">{row.side}</td>
+                <td className={row.placed ? 'strong' : undefined}>
+                  {row.problem && '⚠ '}
+                  {row.gear}
+                </td>
+                <td>{row.model}</td>
+                <td className="num">{row.ru}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {flow && (
+        <div className="sheet-flow">
+          <h4 className="flow-head">
+            {show.name} · Rack Flow · {name}
+          </h4>
+          <RackDrawing drawing={flow} label={`${name} flow`} onOpenGear={onOpenGear} />
+        </div>
+      )}
     </section>
   )
 }
@@ -106,12 +99,15 @@ export function RackDrawingsView({ show, toolbar, onOpenGear }: Props) {
       <style>{PRINT_PAGE}</style>
       <div className="toolbar">
         {toolbar}
-        <button className="primary" onClick={print} disabled={show.racks.length === 0}>
+        <button className="primary" onClick={() => downloadRacksPdf(show)} disabled={show.racks.length === 0}>
+          PDF of all racks
+        </button>
+        <button onClick={print} disabled={show.racks.length === 0}>
           Print…
         </button>
         <span className="muted">
-          One rack per landscape page; choose Save as PDF in the print dialog for a PDF. SVG and DXF export each rack
-          at true scale, in inches.
+          Each rack gets a landscape page with its parts list, then a page for its flow. SVG and DXF export each rack's
+          elevation at true scale, in inches.
         </span>
       </div>
       {show.racks.length === 0 ? (

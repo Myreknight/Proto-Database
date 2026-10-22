@@ -18,6 +18,24 @@ export interface DrawBox {
   kind: 'unit' | 'back' | 'slot'
   gearId: string
   problem: string | null
+  // Set on a unit seen from the rails it's mounted on (and its steck slots), so the
+  // screen can drag it: where it sits now and how big it is.
+  drag?: DragInfo
+}
+
+export interface DragInfo {
+  side: RackSide
+  bottom: number
+  heightU: number
+  half: boolean
+}
+
+// Where each view's rack sits in the drawing, for turning a pointer into a rack unit.
+export interface DrawView {
+  side: RackSide
+  x: number
+  top: number
+  rows: number
 }
 
 export interface DrawText {
@@ -36,19 +54,25 @@ export interface DrawLine {
   y1: number
   x2: number
   y2: number
-  kind: 'frame' | 'rule' | 'limit'
+  // Rack frame, rack-unit rules, the over-the-top line; in flow diagrams, a cable (wire)
+  // and a bundle line (bus).
+  kind: 'frame' | 'rule' | 'limit' | 'wire' | 'bus'
+  // A wire's cable color.
+  color?: string | null
 }
 
 export interface Drawing {
   width: number
   height: number
+  views: DrawView[]
   boxes: DrawBox[]
   texts: DrawText[]
   lines: DrawLine[]
 }
 
 const U = INCHES_PER_U
-const BAY = 19
+export const RACK_WIDTH_IN = 19
+const BAY = RACK_WIDTH_IN
 const LABEL = 1.6
 const GAP = 4
 const MARGIN = 1
@@ -99,8 +123,10 @@ export function rackDrawing(show: Show, rack: Rack, opts: { views?: RackSide[]; 
     texts.push({ x: MARGIN, y: MARGIN + i * TITLE_LINE + size, size, text: line, anchor: 'start', bold: i === 0, muted: i > 0 })
   })
 
+  const drawViews: DrawView[] = []
   views.forEach((view, vi) => {
     const x0 = MARGIN + vi * (viewW + GAP) + LABEL
+    drawViews.push({ side: view, x: x0, top, rows })
     texts.push({ x: x0 + BAY / 2, y: top - 0.6, size: 0.9, text: view === 'front' ? 'FRONT' : 'REAR', anchor: 'middle', bold: true })
 
     for (let k = 1; k <= rows; k++) {
@@ -147,14 +173,15 @@ export function rackDrawing(show: Show, rack: Rack, opts: { views?: RackSide[]; 
       const w = slot ? BAY / 2 : BAY
       const y = top + (rows - topOf(p)) * U
       const h = p.height * U
-      boxes.push({ x: x + 0.05, y: y + 0.04, w: w - 0.1, h: h - 0.08, kind, gearId: p.gear.id, problem: problems.get(p.gear.id) ?? null })
+      const drag = kind === 'unit' ? { side: p.side, bottom: p.bottom, heightU: p.height, half: !!p.slot } : undefined
+      boxes.push({ x: x + 0.05, y: y + 0.04, w: w - 0.1, h: h - 0.08, kind, gearId: p.gear.id, problem: problems.get(p.gear.id) ?? null, drag })
       if (kind === 'back' && covered(p)) continue
 
       // A steck rail seen from its face: its slots, each with the tail mounted in it.
       const library = gearModelOf(show, p.gear)
       const slotNames = kind === 'unit' && library?.steck ? expandPorts(library.ports) : []
       if (slotNames.length) {
-        drawSlots(boxes, texts, { x, y, w, h }, p.gear.id, p.gear.name.trim(), slotNames, steckIn(p.gear.id), show)
+        drawSlots(boxes, texts, { x, y, w, h }, p.gear.id, p.gear.name.trim(), slotNames, steckIn(p.gear.id), show, drag)
         continue
       }
 
@@ -184,6 +211,7 @@ export function rackDrawing(show: Show, rack: Rack, opts: { views?: RackSide[]; 
   return {
     width: MARGIN * 2 + views.length * viewW + (views.length - 1) * GAP,
     height: top + bayH + MARGIN,
+    views: drawViews,
     boxes,
     texts,
     lines,
@@ -202,6 +230,7 @@ function drawSlots(
   slots: string[],
   points: PatchPoint[],
   show: Show,
+  drag: DragInfo | undefined,
 ) {
   const nameW = railName ? Math.min(3, area.w * 0.16) : 0
   if (railName) {
@@ -220,13 +249,13 @@ function drawSlots(
     const numSize = Math.min(0.4, area.h * 0.2)
     texts.push({ x: cx + 0.25, y: area.y + 0.25 + numSize, size: numSize, text: slot, anchor: 'start', muted: true })
     if (!ends.length) {
-      boxes.push({ x: cx + 0.08, y: area.y + 0.2, w: cellW - 0.16, h: area.h - 0.4, kind: 'slot', gearId, problem: null })
+      boxes.push({ x: cx + 0.08, y: area.y + 0.2, w: cellW - 0.16, h: area.h - 0.4, kind: 'slot', gearId, problem: null, drag })
       return
     }
     const subW = cellW / ends.length
     ends.forEach((pt, k) => {
       const sx = cx + k * subW
-      boxes.push({ x: sx + 0.08, y: area.y + 0.2, w: subW - 0.16, h: area.h - 0.4, kind: 'slot', gearId, problem: pt.issue })
+      boxes.push({ x: sx + 0.08, y: area.y + 0.2, w: subW - 0.16, h: area.h - 0.4, kind: 'slot', gearId, problem: pt.issue, drag })
       const size = Math.min(0.6, area.h * 0.28, subW * 0.17)
       const room = subW - 0.35
       const name = pt.cable.name.trim() || 'Unnamed'
@@ -252,6 +281,17 @@ function drawSlots(
   })
 }
 
+// Cable colors are soft for the screen; on paper they're darkened so a wire stays visible.
+export function wireColor(color: string | null | undefined): string {
+  const m = color?.match(/^#?([0-9a-f]{6})$/i)
+  if (!m) return '#333333'
+  const v = parseInt(m[1], 16)
+  const dark = (c: number) => Math.round(c * 0.62)
+    .toString(16)
+    .padStart(2, '0')
+  return `#${dark((v >> 16) & 255)}${dark((v >> 8) & 255)}${dark(v & 255)}`
+}
+
 const xml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const n = (v: number) => Number(v.toFixed(3))
 
@@ -263,7 +303,15 @@ export function drawingToSvg(d: Drawing): string {
   ]
   for (const l of d.lines) {
     const style =
-      l.kind === 'frame' ? 'stroke="#000" stroke-width="0.08"' : l.kind === 'limit' ? 'stroke="#c00" stroke-width="0.1"' : 'stroke="#bbb" stroke-width="0.03"'
+      l.kind === 'frame'
+        ? 'stroke="#000" stroke-width="0.08"'
+        : l.kind === 'limit'
+          ? 'stroke="#c00" stroke-width="0.1"'
+          : l.kind === 'wire'
+            ? `stroke="${xml(wireColor(l.color))}" stroke-width="0.07" stroke-linecap="round"`
+            : l.kind === 'bus'
+              ? 'stroke="#000" stroke-width="0.2"'
+              : 'stroke="#bbb" stroke-width="0.03"'
     out.push(`<line x1="${n(l.x1)}" y1="${n(l.y1)}" x2="${n(l.x2)}" y2="${n(l.y2)}" ${style}/>`)
   }
   for (const b of d.boxes) {
@@ -287,6 +335,8 @@ export function drawingToSvg(d: Drawing): string {
 // DXF text is plain ASCII.
 const ascii = (s: string) =>
   s
+    .replace(/→/g, '->')
+    .replace(/←/g, '<-')
     .replace(/[·•–—]/g, '-')
     .replace(/…/g, '...')
     .replace(/×/g, 'x')
@@ -314,7 +364,8 @@ export function drawingToDxf(d: Drawing): string {
   pair(0, 'ENDSEC')
   pair(0, 'SECTION')
   pair(2, 'ENTITIES')
-  for (const l of d.lines) line(l.kind === 'frame' ? 'RACK' : l.kind === 'limit' ? 'OVER' : 'U-LINES', l.x1, l.y1, l.x2, l.y2)
+  const layers: Record<DrawLine['kind'], string> = { frame: 'RACK', limit: 'OVER', rule: 'U-LINES', wire: 'CABLES', bus: 'BUNDLES' }
+  for (const l of d.lines) line(layers[l.kind], l.x1, l.y1, l.x2, l.y2)
   for (const b of d.boxes) {
     const layer = b.kind === 'back' ? 'GEAR-BACKS' : b.kind === 'slot' ? 'STECK-SLOTS' : 'GEAR'
     line(layer, b.x, b.y, b.x + b.w, b.y)
