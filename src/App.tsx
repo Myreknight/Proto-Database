@@ -121,6 +121,20 @@ export default function App() {
   }, [show, update])
 
   useEffect(() => {
+    // Enter ticks a checkbox (or picks a radio) like Space does, for working without a mouse.
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target
+      if (e.key !== 'Enter' || e.metaKey || e.ctrlKey || e.altKey) return
+      if (t instanceof HTMLInputElement && (t.type === 'checkbox' || t.type === 'radio')) {
+        e.preventDefault()
+        t.click()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  useEffect(() => {
     // N adds a cable, unless you're typing in a field or a dialog is open.
     const onKey = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() !== 'n' || e.metaKey || e.ctrlKey || e.altKey || e.repeat) return

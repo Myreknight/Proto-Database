@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import type { Update } from '../App'
 import {
   addExtension,
@@ -25,6 +25,7 @@ import {
 import { DEPLOYMENTS, type Cable, type Deployment, type Show } from '../types'
 import { CABLE_COLORS, colorName } from '../colors'
 import { categoryById, fieldKey, gearLabel, patchSeries, type PatchPoint, type PatchReport } from '../gear'
+import { continueSeries, textSeries } from '../ports'
 import { endConnectors } from '../labels'
 import { LengthDialog } from './LengthDialog'
 import { PromptDialog } from './PromptDialog'
@@ -44,6 +45,16 @@ export function CableEditor({ show, cable, update, onClose, onSelect, onOpenGear
   const [askingRack, setAskingRack] = useState(false)
   // Spreadsheet-style range in one tail column: anchor is where it started, focus where it ends.
   const [sel, setSel] = useState<{ field: TailField; anchor: number; focus: number } | null>(null)
+  // Dragging the fill handle (the square at the selection's bottom corner): the cells it
+  // starts from and the row it has reached.
+  const [fill, setFill] = useState<{ field: TailField; lo: number; hi: number; to: number } | null>(null)
+  // A steck end just checked: its rail-and-slot field takes focus once it's drawn.
+  const focusSteck = useRef<'A' | 'B' | null>(null)
+  useEffect(() => {
+    if (!focusSteck.current) return
+    document.querySelector<HTMLInputElement>(`[aria-label="Steck rail and slot for End ${focusSteck.current}"]`)?.focus()
+    focusSteck.current = null
+  })
   const type = typeById(show, cable.typeId)
   const tails = visibleTails(show, cable)
   const runTypes = show.cableTypes
@@ -165,75 +176,136 @@ export function CableEditor({ show, cable, update, onClose, onSelect, onOpenGear
     focusTail(field, index)
   }
 
+  // What dragging the fill handle from rows lo–hi down to row `to` writes: the series
+  // those cells start, carried on (counting up, stepping through a device's ports, or a
+  // steady step between several), like a spreadsheet's fill handle.
+  const fillValues = (field: TailField, lo: number, hi: number, to: number) => {
+    const seeds = cellRows(field, lo, hi).map((r) => tails[r][field])
+    const rows = cellRows(field, hi + 1, to)
+    const single = field === 'name' ? textSeries : (text: string, n: number) => patchSeries(show, text, n)
+    return { rows, values: continueSeries(seeds, rows.length, single) }
+  }
+
+  // The lowest row in a column whose cell starts above the pointer.
+  const rowAtPointer = (field: TailField, clientY: number, from: number) => {
+    let row = from
+    document.querySelectorAll<HTMLInputElement>(`[data-tail^="${field}-"]`).forEach((el) => {
+      const i = Number(el.dataset.tail!.slice(field.length + 1))
+      if (i > row && clientY >= el.getBoundingClientRect().top) row = i
+    })
+    return row
+  }
+
+  const fillHandle = (field: TailField) => (
+    <span
+      className="fill-handle"
+      title="Drag down to fill: counts up, or steps through the device's ports"
+      // Keeps focus (and the selection) in the cell while dragging.
+      onMouseDown={(e) => e.preventDefault()}
+      onPointerDown={(e) => {
+        if (e.button !== 0 || !range) return
+        e.preventDefault()
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId)
+        } catch {
+          // Not a capturable pointer.
+        }
+        setFill({ field, lo: range.lo, hi: range.hi, to: range.hi })
+      }}
+      onPointerMove={(e) => {
+        if (!fill) return
+        const to = rowAtPointer(fill.field, e.clientY, fill.hi)
+        if (to !== fill.to) setFill({ ...fill, to })
+      }}
+      onPointerUp={() => {
+        if (!fill) return
+        if (fill.to > fill.hi) {
+          const { rows, values } = fillValues(fill.field, fill.lo, fill.hi, fill.to)
+          patch((c, s) => setTailCells(s, c, fill.field, rows, values))
+          setSel({ field: fill.field, anchor: fill.lo, focus: fill.to })
+        }
+        setFill(null)
+      }}
+      onPointerCancel={() => setFill(null)}
+    />
+  )
+
   const tailInput = (field: TailField, i: number, placeholder: string) => {
     const point = field !== 'name' ? pointAt(`${field}-${i}`) : undefined
+    // The handle sits on the selection's bottom cell, and stays put while it's dragged.
+    const handle = fill ? fill.field === field && i === fill.hi : sel?.field === field && range?.hi === i
+    const filling = !!fill && fill.field === field && i > fill.hi && i <= fill.to
     return (
-      <input
-        data-tail={`${field}-${i}`}
-        className={[multi && inRange(field, i) ? 'in-range' : '', pointClass(point)].filter(Boolean).join(' ') || undefined}
-        title={pointTitle(point)}
-        list={field !== 'name' ? 'patch-points' : undefined}
-        value={tails[i][field]}
-        placeholder={placeholder}
-        onMouseDown={(e) => {
-          // Shift-click extends down the column instead of selecting text.
-          if (e.shiftKey && sel?.field === field) {
-            e.preventDefault()
-            moveTo(field, i, true)
-          } else {
-            setSel({ field, anchor: i, focus: i })
+      <>
+        <input
+          data-tail={`${field}-${i}`}
+          className={[multi && inRange(field, i) ? 'in-range' : '', filling ? 'fill-preview' : '', pointClass(point)].filter(Boolean).join(' ') || undefined}
+          title={pointTitle(point)}
+          list={field !== 'name' ? 'patch-points' : undefined}
+          value={tails[i][field]}
+          placeholder={placeholder}
+          onMouseDown={(e) => {
+            // Shift-click extends down the column instead of selecting text.
+            if (e.shiftKey && sel?.field === field) {
+              e.preventDefault()
+              moveTo(field, i, true)
+            } else {
+              setSel({ field, anchor: i, focus: i })
+            }
+          }}
+          onFocus={() =>
+            setSel((prev) =>
+              prev?.field === field && i >= Math.min(prev.anchor, prev.focus) && i <= Math.max(prev.anchor, prev.focus)
+                ? prev
+                : { field, anchor: i, focus: i },
+            )
           }
-        }}
-        onFocus={() =>
-          setSel((prev) =>
-            prev?.field === field && i >= Math.min(prev.anchor, prev.focus) && i <= Math.max(prev.anchor, prev.focus)
-              ? prev
-              : { field, anchor: i, focus: i },
-          )
-        }
-        onChange={(e) => {
-          setSel({ field, anchor: i, focus: i })
-          patch((c, s) => setTailCells(s, c, field, [i], [e.target.value]))
-        }}
-        onPaste={(e) => {
-          const lines = e.clipboardData.getData('text').split(/\r?\n/)
-          if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop()
-          if (!multi && lines.length < 2) return
-          e.preventDefault()
-          if (multi) fillRange(lines.map((l) => l.trim()))
-          else patch((c, s) => setTailCells(s, c, field, cellRows(field, i), lines.map((l) => l.trim())))
-        }}
-        onCopy={(e) => {
-          if (!multi) return
-          e.preventDefault()
-          e.clipboardData.setData('text/plain', rangeText())
-        }}
-        onCut={(e) => {
-          if (!multi) return
-          e.preventDefault()
-          e.clipboardData.setData('text/plain', rangeText())
-          fillRange([''])
-        }}
-        onKeyDown={(e) => {
-          if (multi && (e.key === 'Delete' || e.key === 'Backspace')) {
+          onChange={(e) => {
+            setSel({ field, anchor: i, focus: i })
+            patch((c, s) => setTailCells(s, c, field, [i], [e.target.value]))
+          }}
+          onPaste={(e) => {
+            const lines = e.clipboardData.getData('text').split(/\r?\n/)
+            if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop()
+            if (!multi && lines.length < 2) return
             e.preventDefault()
+            if (multi) fillRange(lines.map((l) => l.trim()))
+            else patch((c, s) => setTailCells(s, c, field, cellRows(field, i), lines.map((l) => l.trim())))
+          }}
+          onCopy={(e) => {
+            if (!multi) return
+            e.preventDefault()
+            e.clipboardData.setData('text/plain', rangeText())
+          }}
+          onCut={(e) => {
+            if (!multi) return
+            e.preventDefault()
+            e.clipboardData.setData('text/plain', rangeText())
             fillRange([''])
-          } else if (multi && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') {
-            e.preventDefault()
-            fillSeries()
-          } else if (e.key === 'Escape') {
-            setSel({ field, anchor: i, focus: i })
-          } else if (e.shiftKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-            e.preventDefault()
-            const from = sel?.field === field ? sel.focus : i
-            moveTo(field, from + (e.key === 'ArrowDown' ? 1 : -1), true)
-          } else if (e.key === 'Enter' || e.key === 'ArrowDown') {
-            moveTo(field, i + 1, false)
-          } else if (e.key === 'ArrowUp') {
-            moveTo(field, i - 1, false)
-          }
-        }}
-      />
+          }}
+          onKeyDown={(e) => {
+            if (multi && (e.key === 'Delete' || e.key === 'Backspace')) {
+              e.preventDefault()
+              fillRange([''])
+            } else if (multi && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') {
+              e.preventDefault()
+              fillSeries()
+            } else if (e.key === 'Escape') {
+              if (multi) setSel({ field, anchor: i, focus: i })
+              else e.currentTarget.blur()
+            } else if (e.shiftKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+              e.preventDefault()
+              const from = sel?.field === field ? sel.focus : i
+              moveTo(field, from + (e.key === 'ArrowDown' ? 1 : -1), true)
+            } else if (e.key === 'Enter' || e.key === 'ArrowDown') {
+              moveTo(field, i + 1, false)
+            } else if (e.key === 'ArrowUp') {
+              moveTo(field, i - 1, false)
+            }
+          }}
+        />
+        {handle && fillHandle(field)}
+      </>
     )
   }
 
@@ -260,6 +332,53 @@ export function CableEditor({ show, cable, update, onClose, onSelect, onOpenGear
   }
 
   const setColor = (color: string | null) => update((s) => setCableColor(s, cable.id, color))
+
+  // The swatch that takes the tab stop: the cable's color, or No color (a custom color
+  // that isn't one of the swatches leaves it on No color).
+  const swatchIndex = cable.color ? CABLE_COLORS.findIndex((c) => c.hex === cable.color?.toLowerCase()) + 1 : 0
+  const swatchKeys = (e: KeyboardEvent<HTMLDivElement>) => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]
+    if (!step) return
+    e.preventDefault()
+    const count = CABLE_COLORS.length + 1
+    const next = (Math.max(0, swatchIndex) + step + count) % count
+    setColor(next === 0 ? null : CABLE_COLORS[next - 1].hex)
+    e.currentTarget.querySelector<HTMLElement>(`[data-swatch="${next}"]`)?.focus()
+  }
+
+  // Enter moves to the next field (Shift+Enter, back), so a cable can be filled in without
+  // the mouse; Escape leaves the field, so N starts the next cable. The tails table has
+  // its own Enter (down the column), and notes take Enter as a new line.
+  const editorKeys = (e: KeyboardEvent<HTMLDivElement>) => {
+    const t = e.target as HTMLElement
+    if (t.closest('.tails') || e.metaKey || e.ctrlKey || e.altKey) return
+    if (e.key === 'Escape' && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) {
+      t.blur()
+      return
+    }
+    if (e.key !== 'Enter') return
+    const field =
+      (t instanceof HTMLInputElement && !['checkbox', 'radio', 'button', 'submit', 'color', 'range'].includes(t.type)) ||
+      t instanceof HTMLSelectElement ||
+      t.getAttribute('role') === 'radio'
+    if (!field) return
+    const body = e.currentTarget
+    const back = e.shiftKey
+    const move = () => {
+      const stops = [...body.querySelectorAll<HTMLElement>('input, select, textarea, [role="radio"][tabindex="0"]')].filter(
+        (el) => !(el as HTMLInputElement).disabled && el.tabIndex >= 0 && el.offsetParent !== null,
+      )
+      stops[stops.indexOf(t) + (back ? -1 : 1)]?.focus()
+    }
+    // A field with suggestions lets the browser take the Enter first (picking the
+    // highlighted one), then moves on; anything else moves right away.
+    if (t.hasAttribute('list')) {
+      window.setTimeout(move, 0)
+    } else {
+      e.preventDefault()
+      move()
+    }
+  }
 
   // The path this cable is part of, and what it says about where each piece runs.
   const path = linkedCables(show, cable)
@@ -300,7 +419,7 @@ export function CableEditor({ show, cable, update, onClose, onSelect, onOpenGear
         </button>
       </div>
 
-      <div className="editor-body">
+      <div className="editor-body" onKeyDown={editorKeys}>
         <label className="field">
           <span>Cable name</span>
           <input
@@ -419,26 +538,36 @@ export function CableEditor({ show, cable, update, onClose, onSelect, onOpenGear
 
         <div className="field">
           <span>Color code{cable.color ? ` · ${colorName(cable.color)}` : ''}</span>
-          <div className="swatches">
+          {/* One tab stop: arrow keys pick a color, like radio buttons. */}
+          <div className="swatches" role="radiogroup" aria-label="Color code" onKeyDown={swatchKeys}>
             <button
               className={cable.color ? 'swatch none' : 'swatch none active'}
               title="No color"
               aria-label="No color"
+              role="radio"
+              aria-checked={!cable.color}
+              tabIndex={swatchIndex === 0 ? 0 : -1}
+              data-swatch={0}
               onClick={() => setColor(null)}
             />
-            {CABLE_COLORS.map((col) => (
+            {CABLE_COLORS.map((col, i) => (
               <button
                 key={col.hex}
                 className={cable.color?.toLowerCase() === col.hex ? 'swatch active' : 'swatch'}
                 style={{ background: col.hex }}
                 title={col.name}
                 aria-label={col.name}
+                role="radio"
+                aria-checked={cable.color?.toLowerCase() === col.hex}
+                tabIndex={swatchIndex === i + 1 ? 0 : -1}
+                data-swatch={i + 1}
                 onClick={() => setColor(col.hex)}
               />
             ))}
             <label className="swatch custom" title="Custom color">
               <input
                 type="color"
+                tabIndex={-1}
                 aria-label="Custom color"
                 value={cable.color ?? '#cccccc'}
                 onChange={(e) => setColor(e.target.value)}
@@ -481,7 +610,16 @@ export function CableEditor({ show, cable, update, onClose, onSelect, onOpenGear
             return (
               <div key={end} className="steck-end">
                 <label className="check inline small" title="This end mounts in a steck; prints a steck label">
-                  <input type="checkbox" checked={cable[key]} onChange={(e) => patch((c) => ({ ...c, [key]: e.target.checked }))} />
+                  <input
+                    type="checkbox"
+                    checked={cable[key]}
+                    onChange={(e) => {
+                      const on = e.target.checked
+                      patch((c) => ({ ...c, [key]: on }))
+                      // Checking it opens the rail-and-slot field; go straight there.
+                      if (on) focusSteck.current = end
+                    }}
+                  />
                   <span className="clip-label">{endLabel(`Steck · End ${end}`, end)}</span>
                 </label>
                 {cable[key] && (
@@ -621,7 +759,8 @@ export function CableEditor({ show, cable, update, onClose, onSelect, onOpenGear
           what follows is the port; amber means the gear has no such port or another cable is already on it.
           Paste a list into any column to fill the tails below it. Shift-click down a column to select
           several cells, then paste to fill them, press Delete to clear them, or press ⌘D to fill down from the top
-          cell, counting up (“In 1”, “In 2”…) or through the gear's ports.
+          cell, counting up (“In 1”, “In 2”…) or through the gear's ports. Or drag the small square at the bottom
+          corner of a cell or selection down the column to carry its series on, like a spreadsheet.
         </p>
         <table
           className="tails"

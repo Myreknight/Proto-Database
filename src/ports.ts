@@ -110,3 +110,28 @@ export function textSeries(text: string, count: number): string[] {
   }
   return values
 }
+
+// What comes after some cells when they're dragged further, like a spreadsheet's fill
+// handle. One cell continues its own series (`single`, e.g. counting up or stepping
+// through a device's ports). Several that count by a steady step ("In 1", "In 3") keep
+// that step; anything else repeats.
+export function continueSeries(seeds: string[], count: number, single: (text: string, count: number) => string[]): string[] {
+  if (count < 1 || seeds.length === 0) return []
+  if (seeds.length === 1) return single(seeds[0], count + 1).slice(1)
+  const parts = seeds.map((s) => s.match(/^(.*?)(\d+)(\D*)$/))
+  const same = parts.every((p) => p && p[1] === parts[0]![1] && p[3] === parts[0]![3])
+  if (same) {
+    const nums = parts.map((p) => Number(p![2]))
+    const step = nums[1] - nums[0]
+    if (step !== 0 && nums.every((n, i) => i === 0 || n - nums[i - 1] === step)) {
+      const [, prefix, digits, suffix] = parts[0]!
+      const width = digits.startsWith('0') ? digits.length : 0
+      const last = nums[nums.length - 1]
+      return Array.from({ length: count }, (_, k) => {
+        const n = last + step * (k + 1)
+        return n < 0 ? '' : `${prefix}${String(n).padStart(width, '0')}${suffix}`
+      })
+    }
+  }
+  return Array.from({ length: count }, (_, k) => seeds[k % seeds.length])
+}

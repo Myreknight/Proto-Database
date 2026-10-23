@@ -2562,3 +2562,32 @@ button.add-unit {
 .picker-actions {
   align-items: center;
 }
+
+/* The fill handle on the tails table, like a spreadsheet's */
+
+.tails td {
+  position: relative;
+}
+
+.fill-handle {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border: 1px solid var(--surface);
+  cursor: ns-resize;
+  touch-action: none;
+  z-index: 2;
+}
+
+.fill-handle:hover {
+  transform: scale(1.25);
+}
+
+.tails input.fill-preview {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+  background: var(--accent-soft);
+}
