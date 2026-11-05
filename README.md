@@ -7,6 +7,10 @@ Offline cable and gear database for a theatrical audio show's design and shop pr
 - **In a browser:** https://myreknight.github.io/Proto-Database-App/
 - **As a single file:** download a frozen version from `releases/` (e.g. `releases/Proto Database v0.6.8.html`) and open it. It works offline and can be sent to someone as-is.
 
+## Tips and shortcuts
+
+Undo, keyboard-only cable entry, drag-to-fill, pasting from a spreadsheet and more: see [site/TIPS.md](site/TIPS.md).
+
 ## Run it locally
 
 You need [Node.js](https://nodejs.org/) 20.19 or newer (22 LTS is a good pick).

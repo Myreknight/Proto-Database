@@ -5,6 +5,7 @@ import { CableTypesView } from './components/CableTypesView'
 import { ChecklistsView } from './components/ChecklistsView'
 import { FileMenu } from './components/FileMenu'
 import { GearView } from './components/GearView'
+import { HelpDialog } from './components/HelpDialog'
 import { LabelsView } from './components/LabelsView'
 import { PullListView } from './components/PullListView'
 import { RacksView } from './components/RacksView'
@@ -61,6 +62,7 @@ export default function App() {
   const [selectedRackId, setSelectedRackId] = useState<string | null>(null)
   const [selectedGearId, setSelectedGearId] = useState<string | null>(null)
   const [skin, setSkin] = useState<Skin>(loadSkin)
+  const [helpOpen, setHelpOpen] = useState(false)
   const winamp = skin === 'winamp'
   const pixel = skin === 'pixel'
 
@@ -145,6 +147,18 @@ export default function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [addCable])
+
+  useEffect(() => {
+    // ? opens the tips and closes them again, unless you're typing or another dialog is open.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== '?' || e.metaKey || e.ctrlKey || e.altKey || e.repeat) return
+      if (isTyping(e.target) || (!helpOpen && document.querySelector('.dialog-backdrop'))) return
+      e.preventDefault()
+      setHelpOpen((open) => !open)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [helpOpen])
 
   const startNewShow = () => {
     if (
@@ -274,6 +288,14 @@ export default function App() {
             Show Setup
           </button>
           <FileMenu onSave={saveShow} onOpen={openShow} onNew={startNewShow} />
+          <button
+            className="icon-btn help-btn"
+            onClick={() => setHelpOpen(true)}
+            title="Tips and shortcuts (?)"
+            aria-label="Tips and shortcuts"
+          >
+            ?
+          </button>
         </div>
       </header>
 
@@ -367,6 +389,8 @@ export default function App() {
           <option key={n} value={n} />
         ))}
       </datalist>
+
+      {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} />}
 
       {/* The 8-bit skin's switch: a mushroom, tucked away in the corner. */}
       <button

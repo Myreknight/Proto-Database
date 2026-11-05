@@ -530,6 +530,17 @@ export function bundleFlags(show: Show, bundleId: string): FlagReport {
   return { total: cables.length, flagged: flagged.length, place: winner?.label ?? null, reversed, placeOf }
 }
 
+// "19pr Mult, 2× XLR3": what's in a bundle at a glance.
+export function bundleContents(show: Show, bundle: Bundle): string {
+  const counts = new Map<string, number>()
+  for (const c of show.cables) {
+    if (c.bundleId !== bundle.id) continue
+    const name = typeById(show, c.typeId)?.name ?? 'Missing type'
+    counts.set(name, (counts.get(name) ?? 0) + 1)
+  }
+  return [...counts].map(([name, n]) => (n > 1 ? `${n}× ${name}` : name)).join(', ')
+}
+
 export function flagReversedCount(show: Show): number {
   return show.bundles.reduce((n, b) => n + bundleFlags(show, b.id).reversed.size, 0)
 }

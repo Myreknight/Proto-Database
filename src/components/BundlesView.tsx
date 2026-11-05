@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { Update } from '../App'
 import { newId } from '../ids'
-import { bundleFlags, bundleLengthMismatch } from '../show'
+import { bundleContents, bundleFlags, bundleLengthMismatch } from '../show'
 import { loadViewSetting, nextSort, sortItems, storeViewSetting, type SortState, type SortValue } from '../sorting'
 import type { Bundle, Show } from '../types'
 import { BundlePane } from './BundlePane'
+import { BundleSheetsView } from './BundleSheetsView'
 import { SortHeaders, type SortColumn } from './SortHeaders'
 
 interface Props {
@@ -29,20 +30,11 @@ const COLUMNS: SortColumn<SortKey>[] = [
 
 const VIEW_KEY = 'proto-database:bundle-view'
 
-// "19pr Mult, 2× XLR3" — what's in a bundle at a glance.
-function contents(show: Show, bundle: Bundle): string {
-  const counts = new Map<string, number>()
-  for (const c of show.cables) {
-    if (c.bundleId !== bundle.id) continue
-    const name = show.cableTypes.find((t) => t.id === c.typeId)?.name ?? 'Missing type'
-    counts.set(name, (counts.get(name) ?? 0) + 1)
-  }
-  return [...counts].map(([name, n]) => (n > 1 ? `${n}× ${name}` : name)).join(', ')
-}
-
 export function BundlesView({ show, update, selectedId, onSelect, onOpenCable }: Props) {
   const [query, setQuery] = useState('')
-  const [view, setView] = useState<{ sort: SortState<SortKey> }>(() => loadViewSetting(VIEW_KEY, { sort: null }))
+  const [view, setView] = useState<{ sort: SortState<SortKey>; mode: 'bundles' | 'sheets' }>(() =>
+    loadViewSetting(VIEW_KEY, { sort: null, mode: 'bundles' }),
+  )
   const selected = show.bundles.find((b) => b.id === selectedId) ?? null
 
   useEffect(() => storeViewSetting(VIEW_KEY, view), [view])
@@ -60,7 +52,7 @@ export function BundlesView({ show, update, selectedId, onSelect, onOpenCable }:
       return {
         bundle,
         cables,
-        contents: contents(show, bundle),
+        contents: bundleContents(show, bundle),
         flagged: cables.filter((c) => bundleLengthMismatch(show, c)).length,
         flags: bundleFlags(show, bundle.id),
       }
@@ -92,10 +84,35 @@ export function BundlesView({ show, update, selectedId, onSelect, onOpenCable }:
   }
   const rows = sortItems(allRows, view.sort, sortValue)
 
+  const modeSwitch = (
+    <div className="segmented">
+      <button className={view.mode === 'bundles' ? 'active' : ''} onClick={() => setView((v) => ({ ...v, mode: 'bundles' }))}>
+        Bundles
+      </button>
+      <button className={view.mode === 'sheets' ? 'active' : ''} onClick={() => setView((v) => ({ ...v, mode: 'sheets' }))}>
+        Sheets
+      </button>
+    </div>
+  )
+
+  if (view.mode === 'sheets') {
+    return (
+      <BundleSheetsView
+        show={show}
+        toolbar={modeSwitch}
+        onOpenBundle={(id) => {
+          setView((v) => ({ ...v, mode: 'bundles' }))
+          onSelect(id)
+        }}
+      />
+    )
+  }
+
   return (
     <div className={selected ? 'split' : 'split no-editor'}>
       <section className="pane">
         <div className="toolbar">
+          {modeSwitch}
           <button className="primary" onClick={addBundle}>
             Add bundle
           </button>
@@ -120,7 +137,7 @@ export function BundlesView({ show, update, selectedId, onSelect, onOpenCable }:
                 <SortHeaders
                   columns={COLUMNS}
                   sort={view.sort}
-                  onSort={(key) => setView((v) => ({ sort: nextSort(v.sort, key) }))}
+                  onSort={(key) => setView((v) => ({ ...v, sort: nextSort(v.sort, key) }))}
                 />
               </thead>
               <tbody>

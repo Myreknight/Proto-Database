@@ -17,7 +17,7 @@ const PRINT_PAGE = '@media print { @page { size: letter; margin: 0.5in; } }'
 
 const KINDS: { id: ChecklistKind; label: string; hint: string }[] = [
   { id: 'cables', label: 'Cables', hint: "Cables that aren't in a bundle. Every piece, extensions included." },
-  { id: 'bundles', label: 'Bundles', hint: 'Every piece in each bundle. Tick a bundle row to check a step for the whole bundle.' },
+  { id: 'bundles', label: 'Bundles', hint: 'Every piece in each bundle. Tick a bundle row to check a step for the whole bundle. For one page per bundle to set out on the floor, print Bundles → Sheets.' },
   { id: 'tails', label: 'Tails', hint: 'One row per fan or box on each trunk, not per pair.' },
 ]
 

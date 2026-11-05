@@ -6,6 +6,8 @@ Open it at **https://myreknight.github.io/Proto-Database-App/**
 
 Shows are saved in your own browser, and as `.protodb.json` files from the File menu. Nothing you enter is uploaded.
 
+**New here? Read the [tips and shortcuts](TIPS.md)**: undo, keyboard-only cable entry, drag-to-fill, pasting from a spreadsheet and more.
+
 ## Feedback and feature requests
 
 - [Request a feature](https://github.com/Myreknight/Proto-Database-App/issues/new?template=feature_request.yml)
