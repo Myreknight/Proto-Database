@@ -1,11 +1,8 @@
 import { useEffect, useState } from 'react'
-import { flushSync } from 'react-dom'
 import type { Update } from '../App'
 import { downloadText, pickTextFile, safeFilename } from '../files'
 import {
   categoryById,
-  gearList,
-  gearListToCsv,
   gearRu,
   gearRowsFromCsv,
   gearSections,
@@ -21,7 +18,6 @@ import type { Gear, GearCategory, Rack, Show } from '../types'
 import { GearCategoriesDialog } from './GearCategoriesDialog'
 import { GearModelsView } from './GearModelsView'
 import { GearPane } from './GearPane'
-import { PrintHeader } from './PrintHeader'
 import { SortHeaders, type SortColumn } from './SortHeaders'
 
 interface Props {
@@ -32,6 +28,7 @@ interface Props {
   onSelect: (id: string | null) => void
   onOpenCable: (id: string) => void
   onOpenRack: (id: string) => void
+  onOpenPrint: () => void
 }
 
 type SortKey = 'name' | 'qty' | 'manufacturer' | 'model' | 'category' | 'rack' | 'ru' | 'patched' | 'notes'
@@ -48,7 +45,7 @@ const COLUMNS: SortColumn<SortKey>[] = [
   { key: 'notes', label: 'Notes' },
 ]
 
-type Mode = 'units' | 'list' | 'models'
+type Mode = 'units' | 'models'
 type Grouping = 'category' | 'rack' | 'none'
 
 interface View {
@@ -58,11 +55,6 @@ interface View {
 }
 
 const VIEW_KEY = 'proto-database:gear-view'
-
-// Printed on letter paper with normal margins, like the cable list.
-const PRINT_PAGE = '@media print { @page { size: letter; margin: 0.5in; } }'
-
-const today = () => new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
 
 // Connections counted by plug: a From and a Patch A cell on one connector are one.
 const plugs = (points: PatchPoint[]) => new Set(points.map((p) => p.slot)).size
@@ -77,22 +69,18 @@ interface Group {
   gear: Gear[]
 }
 
-export function GearView({ show, patches, update, selectedId, onSelect, onOpenCable, onOpenRack }: Props) {
+export function GearView({ show, patches, update, selectedId, onSelect, onOpenCable, onOpenRack, onOpenPrint }: Props) {
   const [query, setQuery] = useState('')
-  const [view, setView] = useState<View>(() => loadViewSetting(VIEW_KEY, { mode: 'units', group: 'category', sort: null }))
+  const [view, setView] = useState<View>(() => {
+    const stored = loadViewSetting<View>(VIEW_KEY, { mode: 'units', group: 'category', sort: null })
+    // The gear list moved to the Print tab, so an old "list" mode opens on Units.
+    return stored.mode === 'models' ? stored : { ...stored, mode: 'units' }
+  })
   const [notice, setNotice] = useState<string | null>(null)
   const [editingCategories, setEditingCategories] = useState(false)
-  const [printDate, setPrintDate] = useState('')
   const selected = view.mode === 'units' ? (show.gear.find((g) => g.id === selectedId) ?? null) : null
 
   useEffect(() => storeViewSetting(VIEW_KEY, view), [view])
-
-  // Stamp the date as printing starts, whether from the button or ⌘P.
-  useEffect(() => {
-    const stamp = () => flushSync(() => setPrintDate(today()))
-    window.addEventListener('beforeprint', stamp)
-    return () => window.removeEventListener('beforeprint', stamp)
-  }, [])
 
   const addGear = () => {
     const gear = newGear()
@@ -125,20 +113,11 @@ export function GearView({ show, patches, update, selectedId, onSelect, onOpenCa
   }
 
   const exportCsv = () => downloadText(`${safeFilename(show.name)} Gear.csv`, gearToCsv(show), 'text/csv')
-  const exportListCsv = () => downloadText(`${safeFilename(show.name)} Gear List.csv`, gearListToCsv(show), 'text/csv')
-
-  const print = () => {
-    flushSync(() => setPrintDate(today()))
-    window.print()
-  }
 
   const modeSwitch = (
     <div className="segmented">
       <button className={view.mode === 'units' ? 'active' : ''} onClick={() => setView((v) => ({ ...v, mode: 'units' }))}>
         Units
-      </button>
-      <button className={view.mode === 'list' ? 'active' : ''} onClick={() => setView((v) => ({ ...v, mode: 'list' }))}>
-        Gear list
       </button>
       <button className={view.mode === 'models' ? 'active' : ''} onClick={() => setView((v) => ({ ...v, mode: 'models' }))}>
         Models
@@ -157,77 +136,6 @@ export function GearView({ show, patches, update, selectedId, onSelect, onOpenCa
           onSelect(id)
         }}
       />
-    )
-  }
-
-  if (view.mode === 'list') {
-    const sections = gearList(show)
-    const total = sections.reduce((n, s) => n + s.qty, 0)
-    return (
-      <section className="pane pull-view">
-        <style>{PRINT_PAGE}</style>
-        <div className="toolbar">
-          {modeSwitch}
-          <button className="primary" onClick={print} disabled={total === 0}>
-            Print…
-          </button>
-          <button onClick={exportListCsv} disabled={total === 0}>
-            Export CSV
-          </button>
-          <span className="muted">{plural(total, 'piece')}, totaled by model within each category.</span>
-        </div>
-        {total === 0 ? (
-          <div className="empty">
-            <p>Nothing on the gear list yet.</p>
-            <p className="muted">Gear you add under Units shows up here, totaled by category and model.</p>
-          </div>
-        ) : (
-          <div className="pull-body">
-            <PrintHeader
-              show={show}
-              title="Gear List"
-              meta={[printDate, plural(total, 'piece'), `Proto Database v${__APP_VERSION__}`]}
-            />
-            {sections.map(({ category, lines, qty }) => (
-              <section key={category?.id ?? 'none'} className="pull-section">
-                <h3>
-                  {category?.name || (category ? 'Unnamed category' : 'Uncategorized')}{' '}
-                  <span className="muted">({plural(qty, 'piece')})</span>
-                </h3>
-                <table className="grid pull">
-                  <colgroup>
-                    <col style={{ width: '8%' }} />
-                    <col style={{ width: '20%' }} />
-                    <col style={{ width: '24%' }} />
-                    <col style={{ width: '24%' }} />
-                    <col style={{ width: '24%' }} />
-                  </colgroup>
-                  <thead>
-                    <tr>
-                      <th className="num">Qty</th>
-                      <th>Manufacturer</th>
-                      <th>Model</th>
-                      <th>Units</th>
-                      <th>Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lines.map((l) => (
-                      <tr key={l.key}>
-                        <td className="num strong">{l.qty}</td>
-                        <td>{l.manufacturer}</td>
-                        <td className="strong">{l.model}</td>
-                        <td className="muted">{l.units}</td>
-                        <td className="muted">{l.notes}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </section>
-            ))}
-          </div>
-        )}
-      </section>
     )
   }
 
@@ -316,6 +224,9 @@ export function GearView({ show, patches, update, selectedId, onSelect, onOpenCa
           <button onClick={importCsv}>Import CSV…</button>
           <button onClick={exportCsv} disabled={show.gear.length === 0}>
             Export CSV
+          </button>
+          <button onClick={onOpenPrint} title="Opens the gear list on the Print tab">
+            Print gear list…
           </button>
         </div>
 

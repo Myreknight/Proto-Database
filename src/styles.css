@@ -730,17 +730,6 @@ table.tails {
   white-space: nowrap;
 }
 
-.print-summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 16px 0 6px;
-  padding: 10px 12px;
-  background: var(--surface-2);
-  border-radius: var(--radius);
-}
-
 .list-actions {
   display: flex;
   gap: 6px;
@@ -2915,5 +2904,123 @@ button.add-unit {
     min-height: 0;
     padding: 0;
     box-shadow: none;
+  }
+}
+
+/* The Print tab: documents down the left, the picked one on the right */
+
+.print-view {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+}
+
+.print-docs {
+  width: 220px;
+  flex-shrink: 0;
+  overflow: auto;
+  padding: 12px 10px 24px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+
+.print-doc-group + .print-doc-group {
+  margin-top: 14px;
+}
+
+.print-doc-group h3 {
+  margin: 0 6px 4px;
+}
+
+.print-doc-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  margin: 1px 0;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  background: none;
+  text-align: left;
+}
+
+.print-doc-item:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.print-doc-item.active,
+.print-doc-item.active:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.print-doc-name {
+  font-weight: 600;
+}
+
+.print-doc-hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.print-doc {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+}
+
+/* Labels: the print bar on top, the controls and sheets under it */
+.labels-page {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.labels-page .labels-view {
+  min-height: 0;
+}
+
+.print-bar {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+
+.print-bar-options {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.print-bar-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.print-bar .segmented {
+  margin-bottom: 0;
+}
+
+@media print {
+  .print-docs,
+  .print-bar {
+    display: none !important;
+  }
+
+  .print-view,
+  .print-doc,
+  .labels-page {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 }

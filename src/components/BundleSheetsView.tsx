@@ -1,13 +1,13 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { STEPS, STEP_LABELS, bundleChecklist, isDone, type CheckItem } from '../checklists'
 import { colorName } from '../colors'
 import { bundleContents, bundleFlags, bundleLengthMismatch, describeLength, typeById } from '../show'
 import type { Bundle, Cable, Show } from '../types'
+import { PrintBar } from './PrintBar'
 
 interface Props {
   show: Show
-  toolbar: ReactNode
   onOpenBundle: (id: string) => void
 }
 
@@ -193,7 +193,7 @@ function BundleSheet({ show, bundle, pieces, page, pages, date, onOpen, onPrint 
 
 // A bundle sheet for each bundle: what's in it and which end gets flagged, one page per
 // bundle so the sheets can be set out on the floor while the bundles are laid out.
-export function BundleSheetsView({ show, toolbar, onOpenBundle }: Props) {
+export function BundleSheetsView({ show, onOpenBundle }: Props) {
   const [printDate, setPrintDate] = useState('')
   const [query, setQuery] = useState('')
   // Set while printing a single sheet.
@@ -236,8 +236,11 @@ export function BundleSheetsView({ show, toolbar, onOpenBundle }: Props) {
   return (
     <section className="pane pull-view bundle-sheets-view">
       <style>{PRINT_PAGE}</style>
-      <div className="toolbar">
-        {toolbar}
+      <PrintBar
+        onPrint={() => print(null)}
+        disabled={shown.length === 0}
+        label={`Print ${shown.length} sheet${shown.length === 1 ? '' : 's'}…`}
+      >
         <input
           className="search"
           type="search"
@@ -245,14 +248,11 @@ export function BundleSheetsView({ show, toolbar, onOpenBundle }: Props) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <button className="primary" onClick={() => print(null)} disabled={shown.length === 0}>
-          Print {shown.length} sheet{shown.length === 1 ? '' : 's'}…
-        </button>
         <span className="muted">
           One page per bundle, to set out while the bundles are laid out.
           {empty > 0 && ` ${empty} empty bundle${empty === 1 ? " isn't" : "s aren't"} included.`}
         </span>
-      </div>
+      </PrintBar>
       {filled.length === 0 ? (
         <div className="empty">
           <p>No bundle sheets yet.</p>

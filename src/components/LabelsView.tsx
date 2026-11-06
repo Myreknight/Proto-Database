@@ -25,6 +25,7 @@ import {
 } from '../labels'
 import { cableGroups } from '../show'
 import type { Show } from '../types'
+import { PrintBar } from './PrintBar'
 
 // Label sheets print edge to edge; each view sets its own page rule.
 const LABEL_PAGE = '@media print { @page { size: letter; margin: 0; } }'
@@ -320,9 +321,9 @@ export function LabelsView({ show }: { show: Show }) {
     })
 
   return (
-    <div className="labels-view">
+    <div className="labels-page">
       <style>{LABEL_PAGE}</style>
-      <aside className="labels-controls">
+      <PrintBar onPrint={() => window.print()} disabled={labels.length === 0}>
         <div className="segmented">
           <button className={set === 'tail' ? 'active' : ''} onClick={() => setSet('tail')}>
             Tails
@@ -334,234 +335,233 @@ export function LabelsView({ show }: { show: Show }) {
             Stecks
           </button>
         </div>
-        <p className="muted small">
-          {set === 'tail'
-            ? 'Only tails picked from a trunk\'s tail menus: each fan or box gets a block label for its multipin side, then one label per connector.'
-            : set === 'cable'
-              ? 'Every cable and trunk: a label at each end of each piece, extensions included. A built-in fan gets one per jack. Tails print in Tails.'
-              : "One per cable end that's checked as mounting in a steck (in the cable editor, under From / To)."}
-        </p>
+        <strong>
+          {labels.length} label{labels.length === 1 ? '' : 's'} · {pages.length} sheet{pages.length === 1 ? '' : 's'}
+        </strong>
+      </PrintBar>
+      <div className="labels-view">
+        <aside className="labels-controls">
+          <p className="muted small">
+            {set === 'tail'
+              ? 'Only tails picked from a trunk\'s tail menus: each fan or box gets a block label for its multipin side, then one label per connector.'
+              : set === 'cable'
+                ? 'Every cable and trunk: a label at each end of each piece, extensions included. A built-in fan gets one per jack. Tails print in Tails.'
+                : "One per cable end that's checked as mounting in a steck (in the cable editor, under From / To)."}
+          </p>
 
-        <h3>Sheet</h3>
-        {(Object.keys(SHEETS) as SheetId[]).map((id) => (
-          <label key={id} className="radio">
-            <input
-              type="radio"
-              name="sheet"
-              checked={settings.sheets[set] === id}
-              onChange={() => patch({ sheets: { ...settings.sheets, [set]: id } })}
-            />
-            <span>
-              {SHEETS[id].name}
-              <small className="muted">{SHEETS[id].detail}</small>
-            </span>
-          </label>
-        ))}
-
-        {set === 'tail' && (
-          <>
-            <h3>Layout</h3>
-            {(
-              [
-                ['stacked', 'Cable name on top', 'Dimmer Distro•3  Female / Elec 5'],
-                ['centered', 'Number both sides', '1  Piano L  1 / Piano Inputs•1 → patch'],
-              ] as const
-            ).map(([id, name, example]) => (
-              <label key={id} className="radio">
-                <input
-                  type="radio"
-                  name="tail-layout"
-                  checked={settings.tailLayout === id}
-                  onChange={() => patch({ tailLayout: id })}
-                />
-                <span>
-                  {name}
-                  <small className="muted">{example}</small>
-                </span>
-              </label>
-            ))}
-          </>
-        )}
-
-        {set === 'cable' && (
-          <>
-            <h3>Cable labels</h3>
-            <label className="field">
-              <span>Each cable piece</span>
-              <select
-                value={settings.perPiece}
-                onChange={(e) => patch({ perPiece: Number(e.target.value) === 1 ? 1 : 2 })}
-              >
-                <option value={2}>Label both ends</option>
-                <option value={1}>One label (End A only)</option>
-              </select>
+          <h3>Sheet</h3>
+          {(Object.keys(SHEETS) as SheetId[]).map((id) => (
+            <label key={id} className="radio">
+              <input
+                type="radio"
+                name="sheet"
+                checked={settings.sheets[set] === id}
+                onChange={() => patch({ sheets: { ...settings.sheets, [set]: id } })}
+              />
+              <span>
+                {SHEETS[id].name}
+                <small className="muted">{SHEETS[id].detail}</small>
+              </span>
             </label>
-          </>
-        )}
+          ))}
 
-        <h3>Order</h3>
-        <label className="field">
-          <span>Fill the sheet</span>
-          <select
-            value={fill}
-            onChange={(e) => patch({ fill: { ...settings.fill, [set]: e.target.value as FillOrder } })}
-          >
-            <option value="down">Top to bottom, then left to right</option>
-            <option value="across">Left to right, then top to bottom</option>
-          </select>
-        </label>
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={settings.headers[set]}
-            onChange={(e) => patch({ headers: { ...settings.headers, [set]: e.target.checked } })}
-          />
-          Header label before each {set === 'tail' ? 'tail set' : 'cable'}
-        </label>
-        <p className="muted small">Labels print bundle by bundle, then rack by rack, then everything else.</p>
-
-        <h3>Printing</h3>
-        <label className="field">
-          <span>Skip first labels on sheet 1</span>
-          <input
-            type="number"
-            min="0"
-            max={perSheet - 1}
-            value={skip}
-            onChange={(e) => setSkip(Math.min(perSheet - 1, Math.max(0, Math.floor(Number(e.target.value) || 0))))}
-          />
-        </label>
-        <div className="row2">
-          <label className="field">
-            <span>Shift right (in)</span>
-            <input
-              type="number"
-              step="0.01"
-              value={settings.offsetX}
-              onChange={(e) => patch({ offsetX: Number(e.target.value) || 0 })}
-            />
-          </label>
-          <label className="field">
-            <span>Shift down (in)</span>
-            <input
-              type="number"
-              step="0.01"
-              value={settings.offsetY}
-              onChange={(e) => patch({ offsetY: Number(e.target.value) || 0 })}
-            />
-          </label>
-        </div>
-        <label className="check">
-          <input type="checkbox" checked={settings.outlines} onChange={(e) => patch({ outlines: e.target.checked })} />
-          Print outlines (test print on plain paper)
-        </label>
-
-        <div className="print-summary">
-          <strong>
-            {labels.length} label{labels.length === 1 ? '' : 's'} · {pages.length} sheet{pages.length === 1 ? '' : 's'}
-          </strong>
-          <button className="primary" disabled={labels.length === 0} onClick={() => window.print()}>
-            Print…
-          </button>
-        </div>
-        <p className="muted small">
-          In the print dialog use Letter paper, scale 100%, margins None, and turn off headers and footers.
-        </p>
-
-        <h3>
-          Cables{' '}
-          <span className="muted">
-            ({show.cables.length - excluded.size}/{show.cables.length})
-          </span>
-        </h3>
-        <div className="list-actions">
-          <button onClick={() => setExcluded(new Set())}>All</button>
-          <button onClick={() => setExcluded(new Set(show.cables.map((c) => c.id)))}>None</button>
-          <input type="search" placeholder="Filter…" value={query} onChange={(e) => setQuery(e.target.value)} />
-        </div>
-        <div className="cable-checklist">
-          {listed.map(({ key, title, cables }) => {
-            const ids = cables.map((c) => c.cable.id)
-            const included = ids.filter((id) => !excluded.has(id)).length
-            return (
-              <div key={key} className="checklist-group">
-                <label className="check group-head">
+          {set === 'tail' && (
+            <>
+              <h3>Layout</h3>
+              {(
+                [
+                  ['stacked', 'Cable name on top', 'Dimmer Distro•3  Female / Elec 5'],
+                  ['centered', 'Number both sides', '1  Piano L  1 / Piano Inputs•1 → patch'],
+                ] as const
+              ).map(([id, name, example]) => (
+                <label key={id} className="radio">
                   <input
-                    type="checkbox"
-                    checked={included === ids.length}
-                    ref={(el) => {
-                      if (el) el.indeterminate = included > 0 && included < ids.length
-                    }}
-                    onChange={(e) => setIncluded(ids, e.target.checked)}
+                    type="radio"
+                    name="tail-layout"
+                    checked={settings.tailLayout === id}
+                    onChange={() => patch({ tailLayout: id })}
                   />
-                  <span className="grow">{title}</span>
+                  <span>
+                    {name}
+                    <small className="muted">{example}</small>
+                  </span>
                 </label>
-                {cables.map(({ cable, labels: own }) => (
-                  <label key={cable.id} className="check">
+              ))}
+            </>
+          )}
+
+          {set === 'cable' && (
+            <>
+              <h3>Cable labels</h3>
+              <label className="field">
+                <span>Each cable piece</span>
+                <select
+                  value={settings.perPiece}
+                  onChange={(e) => patch({ perPiece: Number(e.target.value) === 1 ? 1 : 2 })}
+                >
+                  <option value={2}>Label both ends</option>
+                  <option value={1}>One label (End A only)</option>
+                </select>
+              </label>
+            </>
+          )}
+
+          <h3>Order</h3>
+          <label className="field">
+            <span>Fill the sheet</span>
+            <select
+              value={fill}
+              onChange={(e) => patch({ fill: { ...settings.fill, [set]: e.target.value as FillOrder } })}
+            >
+              <option value="down">Top to bottom, then left to right</option>
+              <option value="across">Left to right, then top to bottom</option>
+            </select>
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={settings.headers[set]}
+              onChange={(e) => patch({ headers: { ...settings.headers, [set]: e.target.checked } })}
+            />
+            Header label before each {set === 'tail' ? 'tail set' : 'cable'}
+          </label>
+          <p className="muted small">Labels print bundle by bundle, then rack by rack, then everything else.</p>
+
+          <h3>Printing</h3>
+          <label className="field">
+            <span>Skip first labels on sheet 1</span>
+            <input
+              type="number"
+              min="0"
+              max={perSheet - 1}
+              value={skip}
+              onChange={(e) => setSkip(Math.min(perSheet - 1, Math.max(0, Math.floor(Number(e.target.value) || 0))))}
+            />
+          </label>
+          <div className="row2">
+            <label className="field">
+              <span>Shift right (in)</span>
+              <input
+                type="number"
+                step="0.01"
+                value={settings.offsetX}
+                onChange={(e) => patch({ offsetX: Number(e.target.value) || 0 })}
+              />
+            </label>
+            <label className="field">
+              <span>Shift down (in)</span>
+              <input
+                type="number"
+                step="0.01"
+                value={settings.offsetY}
+                onChange={(e) => patch({ offsetY: Number(e.target.value) || 0 })}
+              />
+            </label>
+          </div>
+          <label className="check">
+            <input type="checkbox" checked={settings.outlines} onChange={(e) => patch({ outlines: e.target.checked })} />
+            Print outlines (test print on plain paper)
+          </label>
+
+          <p className="muted small">
+            In the print dialog use Letter paper, scale 100%, margins None, and turn off headers and footers.
+          </p>
+
+          <h3>
+            Cables{' '}
+            <span className="muted">
+              ({show.cables.length - excluded.size}/{show.cables.length})
+            </span>
+          </h3>
+          <div className="list-actions">
+            <button onClick={() => setExcluded(new Set())}>All</button>
+            <button onClick={() => setExcluded(new Set(show.cables.map((c) => c.id)))}>None</button>
+            <input type="search" placeholder="Filter…" value={query} onChange={(e) => setQuery(e.target.value)} />
+          </div>
+          <div className="cable-checklist">
+            {listed.map(({ key, title, cables }) => {
+              const ids = cables.map((c) => c.cable.id)
+              const included = ids.filter((id) => !excluded.has(id)).length
+              return (
+                <div key={key} className="checklist-group">
+                  <label className="check group-head">
                     <input
                       type="checkbox"
-                      checked={!excluded.has(cable.id)}
-                      onChange={(e) => setIncluded([cable.id], e.target.checked)}
-                    />
-                    <span className="grow">{cable.name || <span className="muted">Unnamed</span>}</span>
-                    <span className="muted small">{own.length}</span>
-                  </label>
-                ))}
-              </div>
-            )
-          })}
-        </div>
-      </aside>
-
-      <section className={settings.outlines ? 'labels-preview print-outlines' : 'labels-preview'}>
-        {labels.length === 0 ? (
-          <div className="empty">
-            <p>No labels to print.</p>
-            <p className="muted">
-              {show.cables.length === 0
-                ? 'Add cables first.'
-                : set === 'steck'
-                  ? 'No steck labels yet. Check "Steck" on a cable end in the cable editor to make one.'
-                  : set === 'tail'
-                  ? 'No tails to label. Pick a fan or box for a trunk end in the cable editor; single cables and cable ends print in Cables.'
-                  : 'Selected cables have nothing to label.'}
-            </p>
-          </div>
-        ) : (
-          pages.map((page, p) => (
-            <div key={p} className="sheet-wrap">
-              <div className="sheet-caption muted small">
-                Sheet {p + 1} of {pages.length} · {sheet.name}
-              </div>
-              <div className="sheet">
-                {page.map((label, i) =>
-                  label ? (
-                    <SheetLabel
-                      key={label.key}
-                      label={label}
-                      sheet={sheet}
-                      layout={settings.tailLayout}
-                      x={at(i).x}
-                      y={at(i).y}
-                    />
-                  ) : (
-                    <div
-                      key={`skip-${i}`}
-                      className="sheet-label skipped"
-                      style={{
-                        left: `${at(i).x}in`,
-                        top: `${at(i).y}in`,
-                        width: `${sheet.labelW}in`,
-                        height: `${sheet.labelH}in`,
+                      checked={included === ids.length}
+                      ref={(el) => {
+                        if (el) el.indeterminate = included > 0 && included < ids.length
                       }}
+                      onChange={(e) => setIncluded(ids, e.target.checked)}
                     />
-                  ),
-                )}
-              </div>
+                    <span className="grow">{title}</span>
+                  </label>
+                  {cables.map(({ cable, labels: own }) => (
+                    <label key={cable.id} className="check">
+                      <input
+                        type="checkbox"
+                        checked={!excluded.has(cable.id)}
+                        onChange={(e) => setIncluded([cable.id], e.target.checked)}
+                      />
+                      <span className="grow">{cable.name || <span className="muted">Unnamed</span>}</span>
+                      <span className="muted small">{own.length}</span>
+                    </label>
+                  ))}
+                </div>
+              )
+            })}
+          </div>
+        </aside>
+
+        <section className={settings.outlines ? 'labels-preview print-outlines' : 'labels-preview'}>
+          {labels.length === 0 ? (
+            <div className="empty">
+              <p>No labels to print.</p>
+              <p className="muted">
+                {show.cables.length === 0
+                  ? 'Add cables first.'
+                  : set === 'steck'
+                    ? 'No steck labels yet. Check "Steck" on a cable end in the cable editor to make one.'
+                    : set === 'tail'
+                    ? 'No tails to label. Pick a fan or box for a trunk end in the cable editor; single cables and cable ends print in Cables.'
+                    : 'Selected cables have nothing to label.'}
+              </p>
             </div>
-          ))
-        )}
-      </section>
+          ) : (
+            pages.map((page, p) => (
+              <div key={p} className="sheet-wrap">
+                <div className="sheet-caption muted small">
+                  Sheet {p + 1} of {pages.length} · {sheet.name}
+                </div>
+                <div className="sheet">
+                  {page.map((label, i) =>
+                    label ? (
+                      <SheetLabel
+                        key={label.key}
+                        label={label}
+                        sheet={sheet}
+                        layout={settings.tailLayout}
+                        x={at(i).x}
+                        y={at(i).y}
+                      />
+                    ) : (
+                      <div
+                        key={`skip-${i}`}
+                        className="sheet-label skipped"
+                        style={{
+                          left: `${at(i).x}in`,
+                          top: `${at(i).y}in`,
+                          width: `${sheet.labelW}in`,
+                          height: `${sheet.labelH}in`,
+                        }}
+                      />
+                    ),
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </section>
+      </div>
     </div>
   )
 }

@@ -6,8 +6,7 @@ import { ChecklistsView } from './components/ChecklistsView'
 import { FileMenu } from './components/FileMenu'
 import { GearView } from './components/GearView'
 import { HelpDialog } from './components/HelpDialog'
-import { LabelsView } from './components/LabelsView'
-import { PullListView } from './components/PullListView'
+import { PrintView } from './components/PrintView'
 import { RacksView } from './components/RacksView'
 import { ShowSetupView } from './components/ShowSetupView'
 import { MushroomIcon, PixelHud } from './components/PixelDecor'
@@ -15,6 +14,7 @@ import { AmpDisplay, AmpTitleBar } from './components/WinampDecor'
 import { downloadText, pickTextFile, safeFilename } from './files'
 import { gearNames, patchReport } from './gear'
 import { historyReducer, initHistory, now, typingField } from './history'
+import { loadPrintDoc, printDocForTab, storePrintDoc, type PrintDoc } from './printDocs'
 import {
   bundleLengthMismatchCount,
   flagReversedCount,
@@ -29,7 +29,7 @@ import type { Show } from './types'
 
 export type Update = (fn: (show: Show) => Show) => void
 
-type Tab = 'setup' | 'cables' | 'bundles' | 'racks' | 'gear' | 'pull' | 'labels' | 'checks' | 'types'
+type Tab = 'setup' | 'cables' | 'bundles' | 'racks' | 'gear' | 'checks' | 'print' | 'types'
 
 // Whether a key press is going into a text field (where N is just a letter).
 function isTyping(target: EventTarget | null): boolean {
@@ -63,6 +63,7 @@ export default function App() {
   const [selectedGearId, setSelectedGearId] = useState<string | null>(null)
   const [skin, setSkin] = useState<Skin>(loadSkin)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [printDoc, setPrintDoc] = useState<PrintDoc>(loadPrintDoc)
   const winamp = skin === 'winamp'
   const pixel = skin === 'pixel'
 
@@ -76,6 +77,13 @@ export default function App() {
   }, [skin])
 
   useEffect(() => storeShow(show), [show])
+  useEffect(() => storePrintDoc(printDoc), [printDoc])
+
+  // The Print tab, opened on a given document or the last one used.
+  const openPrint = useCallback((doc?: PrintDoc) => {
+    if (doc) setPrintDoc(doc)
+    setTab('print')
+  }, [])
 
   // Which cable ends and patch cells land on which gear ports, shared by every tab.
   const patches = useMemo(() => patchReport(show), [show])
@@ -96,10 +104,16 @@ export default function App() {
 
   useEffect(() => {
     // Captured before inputs see it, so ⌘Z is the app's undo even while typing in a field.
+    // ⌘P prints from the Print tab; anywhere else it opens the Print tab, on the printout
+    // that goes with the tab you're on.
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return
       const key = e.key.toLowerCase()
-      if (key === 's') {
+      if (key === 'p' && !e.shiftKey && !e.altKey) {
+        if (tab === 'print') return
+        e.preventDefault()
+        openPrint(printDocForTab(tab))
+      } else if (key === 's') {
         e.preventDefault()
         saveShow()
       } else if (key === 'z' && !e.shiftKey) {
@@ -112,7 +126,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [saveShow, undo, redo])
+  }, [saveShow, undo, redo, tab, openPrint])
 
   // A new cable from anywhere, opened in the Cables tab with its name ready to type.
   const addCable = useCallback(() => {
@@ -226,9 +240,8 @@ export default function App() {
       flags: patches.issues,
       flagTitle: `${patches.issues} patch warning(s): ports a model doesn't list, or two cables on one port`,
     },
-    { id: 'pull', label: 'Pull List' },
-    { id: 'labels', label: 'Labels' },
     { id: 'checks', label: 'Checklists' },
+    { id: 'print', label: 'Print' },
     { id: 'types', label: 'Cable Types', count: show.cableTypes.length },
   ]
 
@@ -339,6 +352,7 @@ export default function App() {
             onSelect={setSelectedRackId}
             onOpenCable={openCable}
             onOpenGear={openGear}
+            onOpenPrint={() => openPrint('rack-drawings')}
           />
         )}
         {tab === 'gear' && (
@@ -350,6 +364,7 @@ export default function App() {
             onSelect={setSelectedGearId}
             onOpenCable={openCable}
             onOpenRack={openRack}
+            onOpenPrint={() => openPrint('gear-list')}
           />
         )}
         {tab === 'bundles' && (
@@ -359,11 +374,22 @@ export default function App() {
             selectedId={selectedBundleId}
             onSelect={setSelectedBundleId}
             onOpenCable={openCable}
+            onOpenPrint={() => openPrint('bundle-sheets')}
           />
         )}
-        {tab === 'pull' && <PullListView show={show} />}
-        {tab === 'labels' && <LabelsView show={show} />}
-        {tab === 'checks' && <ChecklistsView show={show} update={update} />}
+        {tab === 'checks' && (
+          <ChecklistsView show={show} update={update} onOpenPrint={() => openPrint('checklists')} />
+        )}
+        {tab === 'print' && (
+          <PrintView
+            show={show}
+            update={update}
+            doc={printDoc}
+            onDoc={setPrintDoc}
+            onOpenBundle={openBundle}
+            onOpenGear={openGear}
+          />
+        )}
         {tab === 'types' && <CableTypesView show={show} update={update} />}
       </main>
 

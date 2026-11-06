@@ -6,7 +6,6 @@ import { frontRowsUsed, rackProblems } from '../racking'
 import { addRack, rackCables, typeById } from '../show'
 import { loadViewSetting, nextSort, sortItems, storeViewSetting, type SortState, type SortValue } from '../sorting'
 import type { Rack, Show } from '../types'
-import { RackDrawingsView } from './RackDrawingsView'
 import { RackPage } from './RackPage'
 import { SortHeaders, type SortColumn } from './SortHeaders'
 
@@ -17,6 +16,7 @@ interface Props {
   onSelect: (id: string | null) => void
   onOpenCable: (id: string) => void
   onOpenGear: (id: string) => void
+  onOpenPrint: () => void
 }
 
 type SortKey = 'name' | 'location' | 'gear' | 'ru' | 'cables' | 'contents'
@@ -42,11 +42,9 @@ function contents(show: Show, rack: Rack): string {
   return [...counts].map(([name, n]) => (n > 1 ? `${n}× ${name}` : name)).join(', ')
 }
 
-export function RacksView({ show, update, selectedId, onSelect, onOpenCable, onOpenGear }: Props) {
+export function RacksView({ show, update, selectedId, onSelect, onOpenCable, onOpenGear, onOpenPrint }: Props) {
   const [query, setQuery] = useState('')
-  const [view, setView] = useState<{ sort: SortState<SortKey>; mode: 'racks' | 'drawings' }>(() =>
-    loadViewSetting(VIEW_KEY, { sort: null, mode: 'racks' }),
-  )
+  const [view, setView] = useState<{ sort: SortState<SortKey> }>(() => loadViewSetting(VIEW_KEY, { sort: null }))
   const selected = show.racks.find((r) => r.id === selectedId) ?? null
   const unracked = show.cables.filter((c) => c.deployment === 'interconnect' && !show.racks.some((r) => r.id === c.rackId))
 
@@ -96,20 +94,6 @@ export function RacksView({ show, update, selectedId, onSelect, onOpenCable, onO
   }
   const rows = sortItems(allRows, view.sort, sortValue)
 
-  const modeSwitch = (
-    <div className="segmented">
-      <button className={view.mode === 'racks' ? 'active' : ''} onClick={() => setView((v) => ({ ...v, mode: 'racks' }))}>
-        Racks
-      </button>
-      <button
-        className={view.mode === 'drawings' ? 'active' : ''}
-        onClick={() => setView((v) => ({ ...v, mode: 'drawings' }))}
-      >
-        Drawings
-      </button>
-    </div>
-  )
-
   // An open rack gets the whole tab.
   if (selected) {
     return (
@@ -125,13 +109,10 @@ export function RacksView({ show, update, selectedId, onSelect, onOpenCable, onO
     )
   }
 
-  if (view.mode === 'drawings') return <RackDrawingsView show={show} toolbar={modeSwitch} onOpenGear={onOpenGear} />
-
   return (
     <div className="split no-editor">
       <section className="pane">
         <div className="toolbar">
-          {modeSwitch}
           <button className="primary" onClick={addNewRack}>
             Add rack
           </button>
@@ -147,6 +128,10 @@ export function RacksView({ show, update, selectedId, onSelect, onOpenCable, onO
               ⚠ {unracked.length} interconnect{unracked.length === 1 ? " isn't" : "s aren't"} in a rack
             </span>
           )}
+          <span className="spacer" />
+          <button onClick={onOpenPrint} title="Opens the rack drawings on the Print tab">
+            Print rack drawings…
+          </button>
         </div>
 
         {show.racks.length === 0 ? (

@@ -5,7 +5,6 @@ import { bundleContents, bundleFlags, bundleLengthMismatch } from '../show'
 import { loadViewSetting, nextSort, sortItems, storeViewSetting, type SortState, type SortValue } from '../sorting'
 import type { Bundle, Show } from '../types'
 import { BundlePane } from './BundlePane'
-import { BundleSheetsView } from './BundleSheetsView'
 import { SortHeaders, type SortColumn } from './SortHeaders'
 
 interface Props {
@@ -14,6 +13,7 @@ interface Props {
   selectedId: string | null
   onSelect: (id: string | null) => void
   onOpenCable: (id: string) => void
+  onOpenPrint: () => void
 }
 
 type SortKey = 'name' | 'from' | 'to' | 'length' | 'cables' | 'flag' | 'contents'
@@ -30,11 +30,9 @@ const COLUMNS: SortColumn<SortKey>[] = [
 
 const VIEW_KEY = 'proto-database:bundle-view'
 
-export function BundlesView({ show, update, selectedId, onSelect, onOpenCable }: Props) {
+export function BundlesView({ show, update, selectedId, onSelect, onOpenCable, onOpenPrint }: Props) {
   const [query, setQuery] = useState('')
-  const [view, setView] = useState<{ sort: SortState<SortKey>; mode: 'bundles' | 'sheets' }>(() =>
-    loadViewSetting(VIEW_KEY, { sort: null, mode: 'bundles' }),
-  )
+  const [view, setView] = useState<{ sort: SortState<SortKey> }>(() => loadViewSetting(VIEW_KEY, { sort: null }))
   const selected = show.bundles.find((b) => b.id === selectedId) ?? null
 
   useEffect(() => storeViewSetting(VIEW_KEY, view), [view])
@@ -84,35 +82,10 @@ export function BundlesView({ show, update, selectedId, onSelect, onOpenCable }:
   }
   const rows = sortItems(allRows, view.sort, sortValue)
 
-  const modeSwitch = (
-    <div className="segmented">
-      <button className={view.mode === 'bundles' ? 'active' : ''} onClick={() => setView((v) => ({ ...v, mode: 'bundles' }))}>
-        Bundles
-      </button>
-      <button className={view.mode === 'sheets' ? 'active' : ''} onClick={() => setView((v) => ({ ...v, mode: 'sheets' }))}>
-        Sheets
-      </button>
-    </div>
-  )
-
-  if (view.mode === 'sheets') {
-    return (
-      <BundleSheetsView
-        show={show}
-        toolbar={modeSwitch}
-        onOpenBundle={(id) => {
-          setView((v) => ({ ...v, mode: 'bundles' }))
-          onSelect(id)
-        }}
-      />
-    )
-  }
-
   return (
     <div className={selected ? 'split' : 'split no-editor'}>
       <section className="pane">
         <div className="toolbar">
-          {modeSwitch}
           <button className="primary" onClick={addBundle}>
             Add bundle
           </button>
@@ -123,6 +96,10 @@ export function BundlesView({ show, update, selectedId, onSelect, onOpenCable }:
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
+          <span className="spacer" />
+          <button onClick={onOpenPrint} title="Opens the bundle sheets on the Print tab">
+            Print bundle sheets…
+          </button>
         </div>
 
         {show.bundles.length === 0 ? (

@@ -32,10 +32,10 @@ body:
       options:
         - Cables
         - Bundles
-        - Interconnects / racks
-        - Pull List
-        - Labels or printing
+        - Racks and interconnects
+        - Gear
         - Checklists
+        - Print (cable list, labels, sheets, drawings)
         - Cable Types
         - Show Setup
         - Saving and opening shows

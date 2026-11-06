@@ -10,16 +10,26 @@ import {
   type CheckGroup,
   type ChecklistKind,
 } from '../checklists'
+import { loadViewSetting, storeViewSetting } from '../sorting'
 import type { CheckStep, Show } from '../types'
+import { PrintBar } from './PrintBar'
 import { PrintHeader } from './PrintHeader'
 
 const PRINT_PAGE = '@media print { @page { size: letter; margin: 0.5in; } }'
 
 const KINDS: { id: ChecklistKind; label: string; hint: string }[] = [
   { id: 'cables', label: 'Cables', hint: "Cables that aren't in a bundle. Every piece, extensions included." },
-  { id: 'bundles', label: 'Bundles', hint: 'Every piece in each bundle. Tick a bundle row to check a step for the whole bundle. For one page per bundle to set out on the floor, print Bundles → Sheets.' },
+  { id: 'bundles', label: 'Bundles', hint: 'Every piece in each bundle. Tick a bundle row to check a step for the whole bundle. For one page per bundle to set out on the floor, see Print → Bundle Sheets.' },
   { id: 'tails', label: 'Tails', hint: 'One row per fan or box on each trunk, not per pair.' },
 ]
+
+// Which checklist is showing, shared by the Checklists tab and its page on the Print tab.
+const KIND_KEY = 'proto-database:checklist-kind'
+
+function loadKind(): ChecklistKind {
+  const { kind } = loadViewSetting<{ kind: string }>(KIND_KEY, { kind: 'cables' })
+  return KINDS.find((k) => k.id === kind)?.id ?? 'cables'
+}
 
 const today = () => new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
 const now = () => new Date().toISOString()
@@ -42,11 +52,15 @@ function GroupCheck({ done, total, label, onChange }: { done: number; total: num
   )
 }
 
-export function ChecklistsView({ show, update }: { show: Show; update: Update }) {
-  const [kind, setKind] = useState<ChecklistKind>('cables')
+// On its own tab it's where steps get ticked off, and Print… jumps to its page on the
+// Print tab (onOpenPrint); on the Print tab, Print… prints it.
+export function ChecklistsView({ show, update, onOpenPrint }: { show: Show; update: Update; onOpenPrint?: () => void }) {
+  const [kind, setKind] = useState<ChecklistKind>(loadKind)
   const [query, setQuery] = useState('')
   const [hideDone, setHideDone] = useState(false)
   const [printDate, setPrintDate] = useState('')
+
+  useEffect(() => storeViewSetting(KIND_KEY, { kind }), [kind])
 
   useEffect(() => {
     const stamp = () => flushSync(() => setPrintDate(today()))
@@ -87,7 +101,11 @@ export function ChecklistsView({ show, update }: { show: Show; update: Update })
   return (
     <section className="pane checklist-view">
       <style>{PRINT_PAGE}</style>
-      <div className="toolbar">
+      <PrintBar
+        onPrint={onOpenPrint ?? print}
+        disabled={allItems.length === 0}
+        title={onOpenPrint ? 'Opens this checklist on the Print tab' : undefined}
+      >
         <div className="segmented">
           {KINDS.map((k) => (
             <button key={k.id} className={kind === k.id ? 'active' : ''} onClick={() => setKind(k.id)}>
@@ -106,11 +124,7 @@ export function ChecklistsView({ show, update }: { show: Show; update: Update })
           <input type="checkbox" checked={hideDone} onChange={(e) => setHideDone(e.target.checked)} />
           Hide completed
         </label>
-        <span className="spacer" />
-        <button onClick={print} disabled={allItems.length === 0}>
-          Print…
-        </button>
-      </div>
+      </PrintBar>
 
       <div className="checklist-body">
         <p className="muted small screen-only">{kindInfo.hint}</p>

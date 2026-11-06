@@ -482,7 +482,6 @@
   }
 
   [data-skin='winamp'] .bundle-cable,
-  [data-skin='winamp'] .print-summary,
   [data-skin='winamp'] .notice {
     background: #000;
     border: 1px solid;

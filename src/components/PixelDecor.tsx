@@ -118,10 +118,9 @@ const WORLDS: Record<string, string> = {
   bundles: '1-2',
   racks: '1-3',
   gear: '1-4',
-  pull: '2-1',
-  labels: '2-2',
-  checks: '2-3',
-  types: '2-4',
+  checks: '2-1',
+  print: '2-2',
+  types: '2-3',
   setup: '3-1',
 }
 

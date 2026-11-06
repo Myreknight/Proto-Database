@@ -4,6 +4,7 @@ import { toCsv } from '../csv'
 import { downloadText, safeFilename } from '../files'
 import { pullList, type PullGroup } from '../show'
 import type { Part, Show } from '../types'
+import { PrintBar } from './PrintBar'
 import { PrintHeader } from './PrintHeader'
 
 // Printed on letter paper with normal margins (label sheets print edge to edge).
@@ -139,18 +140,20 @@ export function PullListView({ show }: { show: Show }) {
   return (
     <section className="pane pull-view">
       <style>{PRINT_PAGE}</style>
-      <div className="toolbar">
-        <button className="primary" onClick={print} disabled={empty}>
-          Print…
-        </button>
-        <button onClick={exportCsv} disabled={empty}>
-          Export CSV
-        </button>
+      <PrintBar
+        onPrint={print}
+        disabled={empty}
+        actions={
+          <button onClick={exportCsv} disabled={empty}>
+            Export CSV
+          </button>
+        }
+      >
         <span className="muted">
           {total} piece{total === 1 ? '' : 's'}. Updates as cables are added, including extensions and the
           tails on each trunk.
         </span>
-      </div>
+      </PrintBar>
 
       {empty ? (
         <div className="empty">

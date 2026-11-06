@@ -20,6 +20,7 @@ The goal is to enter a whole cable without touching the mouse.
 | N | New cable (when you aren't typing in a field) |
 | ? | Open these tips in the app (or click **?** in the top bar) |
 | ⌘S | Save the show to a file |
+| ⌘P | Open the Print tab on the printout for the tab you're on (on the Print tab, print) |
 | ⌘Z / ⌘⇧Z | Undo / redo |
 | Enter on a checkbox | Ticks it, same as Space |
 | Esc | Leaves the field you're in, so N works again |
@@ -76,18 +77,26 @@ Copy a column of cells in Excel, Numbers or Google Sheets, click a tail cell, an
 - **Adding gear to a rack:** in the picker, click one, Shift-click to select a range, or drag down the list to pick several.
 - **In the drawing:** drag a unit to move it. It snaps to rack units. Drop it on the rear view to move it to the rear rails, and half-width gear picks a side. Click a unit to open it, or use ▲▼ in the gear list to nudge it.
 - **Steck rails** are gear models flagged Steck, with 4 slots. A multipin (G-block, Socapex, VEAM) fills a slot, and D-size connectors (etherCON, opticalCON, XLR) fit two to a slot on a 1RU rail, or four on a 2RU rail. Tick **Steck** on a cable end and type its slot, like `SR 1 · 3`.
-- **Each rack page** switches between Elevation and Flow, and exports a PDF (elevation, parts list and flow), SVG or DXF. **Racks → Drawings** makes one PDF of every rack.
+- **Each rack page** switches between Elevation and Flow, and exports a PDF (elevation, parts list and flow), SVG or DXF. **Print → Rack Drawings** prints every rack, or makes one PDF of them all.
 
 ## Bundles and linked cables
 
 - **Flag one end** of each cable in a bundle so all the same ends land together. A cable flagged at the opposite end gets a warning.
 - **Create extension** copies every cable in a bundle at a length you choose.
-- **Bundle sheets:** **Bundles → Sheets** prints one page per bundle to set out on the floor during layout. Each page has the bundle's route, length and flagged end in large type, then every cable with its type, tails, length, flag and prep boxes (ticked from the Checklists tab). Print them all, or use **Print this sheet** for just one.
+- **Bundle sheets:** **Print → Bundle Sheets** prints one page per bundle to set out on the floor during layout. Each page has the bundle's route, length and flagged end in large type, then every cable with its type, tails, length, flag and prep boxes (ticked from the Checklists tab). Print them all, or use **Print this sheet** for just one.
 - **Linked cables** (interconnect → steck → bundle → steck → interconnect) share one color. Use **Apply name to linked** to give them all one name.
 
-## Labels
+## Printing
 
-- Pick **Tails**, **Cables** or **Stecks**, then a sheet: 80 per sheet (Avery 5167 / OL25) or 30 per sheet (Avery 5160).
+Everything prints from the **Print** tab: Cable List, Labels, Checklists, Bundle Sheets, Gear List and Rack Drawings.
+
+- Pick a printout on the left (↑ and ↓ work there), set it up, and **Print** is always at the top right. CSV and PDF exports sit beside it.
+- The Bundles, Racks, Gear and Checklists tabs each have a **Print…** button that jumps to their printout, and so does ⌘P.
+- The app remembers the last printout you used.
+
+### Labels
+
+- On **Print → Labels**, pick **Tails**, **Cables** or **Stecks**, then a sheet: 80 per sheet (Avery 5167 / OL25) or 30 per sheet (Avery 5160).
 - Tick **Print outlines** and do a test print on plain paper. If the labels are a little off, adjust **Shift right / Shift down**. **Skip first labels** uses up a partly used sheet.
 
 ## Just for fun
