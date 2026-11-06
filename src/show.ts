@@ -1,10 +1,11 @@
 import seedCsv from '../cable_types.csv?raw'
 import seedModelsCsv from '../gear_models.csv?raw'
 import { softenColor } from './colors'
-import { cableTypesFromCsv, gearModelsFromCsv, parseHalfWidth, parseRu, parseYes, type GearModelRow } from './csv'
+import { cableTypesFromCsv, gearModelsFromCsv, parseHalfWidth, parseRu, type GearModelRow } from './csv'
 import { newId } from './ids'
 import { gearMatcher } from './match'
 import { placeUnplaced } from './racking'
+import { migrateSteckRails, normalizeSteck } from './stecks'
 import {
   DEPLOYMENTS,
   GEAR_CATEGORY_NAMES,
@@ -48,7 +49,6 @@ export function seedGearModels(categories: GearCategory[]): GearModel[] {
     categoryId: categories.find((c) => c.name.trim().toLowerCase() === r.category.toLowerCase())?.id ?? null,
     ru: parseRu(r.ru),
     halfWidth: parseHalfWidth(r.width),
-    steck: parseYes(r.steck),
     ports: r.ports,
     notes: r.notes,
   }))
@@ -209,6 +209,7 @@ export function normalizeShow(raw: unknown): Show {
     rackSide: g.rackSide === 'rear' ? ('rear' as const) : ('front' as const),
     rackSlot: g.rackSlot === 'left' || g.rackSlot === 'right' ? g.rackSlot : null,
     notes: g.notes ?? '',
+    steck: normalizeSteck(g.steck),
   }))
   // Shows from before the model library get the starter one.
   const gearModels: GearModel[] = Array.isArray(s.gearModels)
@@ -220,12 +221,13 @@ export function normalizeShow(raw: unknown): Show {
           categoryId: m.categoryId && categoryIds.has(m.categoryId) ? m.categoryId : null,
           ru: typeof m.ru === 'number' && m.ru > 0 ? m.ru : null,
           halfWidth: m.halfWidth === true,
-          steck: m.steck === true,
           ports: m.ports ?? '',
           notes: m.notes ?? '',
         }))
         .filter((m) => m.model.trim())
     : seedGearModels(gearCategories)
+  // Steck rails that were gear models become rails built into their racks.
+  const stecked = migrateSteckRails(gear, gearModels, cables, Array.isArray(s.gearModels) ? s.gearModels : [])
   // Gear racked before positions existed is placed top down, in the order it was listed.
   return placeUnplaced({
     format: 'proto-database-show',
@@ -233,12 +235,12 @@ export function normalizeShow(raw: unknown): Show {
     name: s.name ?? 'Untitled Show',
     info: normalizeInfo(s.info),
     cableTypes,
-    cables,
+    cables: stecked.cables,
     bundles,
     racks,
     gearCategories,
-    gear,
-    gearModels,
+    gear: stecked.gear,
+    gearModels: stecked.gearModels,
     checks: s.checks && typeof s.checks === 'object' ? s.checks : {},
   })
 }
@@ -272,12 +274,6 @@ export function steckMount(show: Show, cable: Cable, end: 'A' | 'B'): { tail?: C
   const tail = type?.part === 'Trunk' ? typeById(show, end === 'A' ? cable.tailATypeId : cable.tailBTypeId) : undefined
   if (tail) return { tail, connector: tail.endA }
   return { connector: (end === 'A' ? type?.endA : type?.endB) ?? '' }
-}
-
-// A G-block or other multipin fills a steck slot by itself; D-size connectors (etherCON,
-// opticalCON DUO, XLR, NL4…) share one, two per rack unit of rail.
-export function fillsSteckSlot(connector: string): boolean {
-  return /multipin|g-?block|socapex|veam|dt12|cam-?lok/i.test(connector)
 }
 
 export function bundleById(show: Show, id: string | null): Bundle | undefined {

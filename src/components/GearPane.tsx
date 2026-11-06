@@ -49,7 +49,6 @@ export function GearPane({ show, gear, points, report, update, onClose, onOpenCa
   const portSpec = gearModelOf(show, gear)?.ports ?? ''
   const ru = gearModelOf(show, gear)?.ru ?? null
   const half = gearModelOf(show, gear)?.halfWidth ?? false
-  const steck = gearModelOf(show, gear)?.steck ?? false
   const spot = gear.rackId ? placedIn(show, gear.rackId).find((p) => p.gear.id === gear.id) : undefined
   const ports = gearPorts(show, gear)
   const sharing = sameModel(show, gear).length
@@ -249,17 +248,6 @@ export function GearPane({ show, gear, points, report, update, onClose, onOpenCa
             )}
           </p>
         )}
-        {hasModel && (
-          <label className="check inline small" title="Shared by every unit of this model">
-            <input
-              type="checkbox"
-              checked={steck}
-              onChange={(e) => update((s) => setModelField(s, gear, { steck: e.target.checked }))}
-            />
-            Steck rail or panel: its ports are slots that tail connectors mount in
-          </label>
-        )}
-
         <div className="row2 rack-row">
           <label className="field">
             <span>
@@ -333,11 +321,7 @@ export function GearPane({ show, gear, points, report, update, onClose, onOpenCa
             <h3>
               Ports <span className="muted">({used} of {ports.length} used)</span>
             </h3>
-            <p className="muted small">
-              {steck
-                ? 'Click a slot’s inside to patch an interconnect, or its outside for a cable from the rest of the world.'
-                : 'Click a port (or Enter on it) to patch an interconnect to it.'}
-            </p>
+            <p className="muted small">Click a port (or Enter on it) to patch an interconnect or a tail to it.</p>
             <PortMap show={show} gear={gear} points={points} onPick={setPatching} onOpenCable={onOpenCable} />
             {offList.length > 0 && (
               <>

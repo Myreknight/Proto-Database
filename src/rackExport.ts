@@ -4,6 +4,7 @@ import { downloadBytes, downloadText, safeFilename } from './files'
 import { gearLabel, gearRu, rackGear } from './gear'
 import { fitText, pdfBytes, PdfPage, type Rgb } from './pdf'
 import { frontRowsUsed, placedIn, rackProblems, topOf } from './racking'
+import { steckSummary } from './stecks'
 import type { Rack, Show } from './types'
 
 const today = () => new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
@@ -39,7 +40,7 @@ export function rackParts(show: Show, rack: Rack): PartRow[] {
       u: p.height > 1 ? `${topOf(p)}–${p.bottom}` : String(p.bottom),
       side: `${p.side === 'front' ? 'Front' : 'Rear'}${p.slot ? ` ${p.slot === 'left' ? 'L' : 'R'}` : ''}`,
       gear: name ? `${name}${g.qty > 1 ? ` ×${g.qty}` : ''}` : g.qty > 1 ? `${g.qty} pcs` : '—',
-      model: model(g),
+      model: g.steck ? steckSummary(g.steck) : model(g),
       ru: String(p.height),
       problem: problems.get(g.id) ?? null,
       placed: true,

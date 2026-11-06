@@ -11,7 +11,7 @@ export const CABLE_TYPE_HEADERS = [
   'Notes',
 ]
 
-export const GEAR_MODEL_HEADERS = ['Manufacturer', 'Model', 'Category', 'RU', 'Width', 'Steck', 'Ports', 'Notes']
+export const GEAR_MODEL_HEADERS = ['Manufacturer', 'Model', 'Category', 'RU', 'Width', 'Ports', 'Notes']
 
 export interface GearModelRow {
   manufacturer: string
@@ -19,14 +19,8 @@ export interface GearModelRow {
   category: string
   ru: string
   width: string
-  steck: string
   ports: string
   notes: string
-}
-
-// "Yes", "Y", "X", "True", "1" → yes.
-export function parseYes(text: string): boolean {
-  return /^(y|yes|x|true|1|steck)$/i.test(text.trim())
 }
 
 // "Half", "1/2", "half rack" → half width; anything else is full width.
@@ -49,7 +43,6 @@ const MODEL_ALIASES: Record<keyof GearModelRow, string[]> = {
   category: ['category', 'categories', 'department', 'dept', 'section', 'group'],
   ru: RU_HEADERS,
   width: ['width', 'rack width', 'half width', 'half-width'],
-  steck: ['steck', 'steck rail', 'stecks'],
   ports: ['ports', 'port list', 'i/o', 'io', 'connections'],
   notes: ['notes', 'note', 'comments', 'comment', 'remarks'],
 }

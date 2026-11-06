@@ -140,7 +140,9 @@ export function GearView({ show, patches, update, selectedId, onSelect, onOpenCa
   }
 
   const q = query.trim().toLowerCase()
-  const matches = show.gear.filter(
+  // Stecks are built on their rack's page, not listed as gear.
+  const units = show.gear.filter((g) => !g.steck)
+  const matches = units.filter(
     (g) =>
       !q ||
       [g.name, g.manufacturer, g.model, g.notes, categoryById(show, g.categoryId)?.name ?? '', rackById(show, g.rackId)?.name ?? '']
@@ -222,7 +224,7 @@ export function GearView({ show, patches, update, selectedId, onSelect, onOpenCa
           <span className="spacer" />
           <button onClick={() => setEditingCategories(true)}>Categories…</button>
           <button onClick={importCsv}>Import CSV…</button>
-          <button onClick={exportCsv} disabled={show.gear.length === 0}>
+          <button onClick={exportCsv} disabled={units.length === 0}>
             Export CSV
           </button>
           <button onClick={onOpenPrint} title="Opens the gear list on the Print tab">
@@ -239,7 +241,7 @@ export function GearView({ show, patches, update, selectedId, onSelect, onOpenCa
           </div>
         )}
 
-        {show.gear.length === 0 ? (
+        {units.length === 0 ? (
           <div className="empty">
             <p>No gear yet.</p>
             <p className="muted">

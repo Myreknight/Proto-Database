@@ -78,8 +78,12 @@ Copy a column of cells in Excel, Numbers or Google Sheets, click a tail cell, an
 
 - **Adding gear to a rack:** in the picker, click one, Shift-click to select a range, or drag down the list to pick several.
 - **In the drawing:** drag a unit to move it. It snaps to rack units. Drop it on the rear view to move it to the rear rails, and half-width gear picks a side. Click a unit to open it, or use ▲▼ in the gear list to nudge it.
-- **Steck rails** are gear models flagged Steck, with 4 slots. A multipin (G-block, Socapex, VEAM) fills a slot, and D-size connectors (etherCON, opticalCON, XLR) fit two to a slot on a 1RU rail, or four on a 2RU rail. Tick **Steck** on a cable end and type its slot, like `SR 1 · 3`, or patch it from the rack page.
-- **Each steck slot has two sides.** The **inside** is where interconnects from the rack's gear plug in. The **outside** is where cables run out to the rest of the world. An interconnect inside and the cable it meets outside are the same connector, so they don't count against each other. A tail mounted in a slot fills both sides. On a rack page, each steck rail lists its slots with both sides: click one to patch it.
+- **Steck rails are built on the rack page**, not picked from Gear. Click **+ Add steck rail** and set its size (1–4RU). A rail has four quarters, which work like ports for stecks.
+- **Mark the ends first.** Tick **Steck** on a cable end in the cable editor, under From and To. Then click **Place…** on a quarter and pick from the marked ends, with this rack's own first (its interconnects, and cables whose end is at the rack's location). Ends already on a rail show up when you search, to move one.
+- **A tail fills a quarter.** A 1RU rail takes G-blocks up to 6pr, 2RU and up to 19pr. **Connectors share one**, two per rack unit of rail (2 on 1RU, 4 on 2RU); an NL8 takes two spaces. The connector type comes from the cable.
+- **The interconnect comes along.** Placing a cable end also places the interconnect it's linked to at that steck, inside the same quarter. Take it off with × if it belongs somewhere else; anything taken off stays marked Steck, ready to place again.
+- **Warnings, never blocks:** a quarter that's over, something sharing a quarter with a tail, or a tail too big for the rail. Moving an end from another rail asks first.
+- **On the gear list**, steck rails are counted by size under Racks (`1RU steck rail · SR 1–3`).
 - **Each rack page** switches between Elevation and Flow, and exports a PDF (elevation, parts list and flow), SVG or DXF. **Print → Rack Drawings** prints every rack, or makes one PDF of them all.
 
 ## Bundles and linked cables

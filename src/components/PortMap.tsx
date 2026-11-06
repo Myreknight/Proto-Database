@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent } from 'react'
-import { gearModelOf, gearPorts, steckFaces, type PatchPoint, type SteckFace } from '../gear'
+import { gearPorts, type PatchPoint } from '../gear'
 import type { PatchTarget } from '../patching'
 import { portKey } from '../ports'
 import type { Gear, Show } from '../types'
@@ -11,8 +11,6 @@ interface Props {
   onPick: (target: PatchTarget) => void
   onOpenCable: (id: string) => void
 }
-
-const FACES: SteckFace[] = ['inside', 'outside']
 
 // One cable end or patch cell landing here, opening its cable.
 export function PointLink({ point, onOpenCable }: { point: PatchPoint; onOpenCable: (id: string) => void }) {
@@ -28,12 +26,11 @@ export function PointLink({ point, onOpenCable }: { point: PatchPoint; onOpenCab
 }
 
 // A unit's ports and what's patched to each. Clicking a port (or Enter on it) patches an
-// interconnect there. A steck rail's ports are its slots, each with an inside and an
-// outside. The list is one Tab stop; the arrow keys move through it.
+// interconnect or a tail there. The list is one Tab stop; the arrow keys move through it.
+// (Stecks have their own editor on the rack page.)
 export function PortMap({ show, gear, points, onPick, onOpenCable }: Props) {
   const [at, setAt] = useState(0)
   const ports = gearPorts(show, gear)
-  const steck = gearModelOf(show, gear)?.steck ?? false
   const onPort = new Map<string, PatchPoint[]>()
   for (const p of points) {
     if (!p.port) continue
@@ -80,38 +77,13 @@ export function PortMap({ show, gear, points, onPick, onOpenCable }: Props) {
     )
 
   return (
-    <ul className={steck ? 'port-map steck-map' : 'port-map'} onKeyDown={onKey}>
+    <ul className="port-map" onKeyDown={onKey}>
       {ports.map((port) => {
         const here = onPort.get(portKey(port)) ?? []
-        if (!steck) {
-          return (
-            <li key={port} className={here.length > 1 ? 'clash' : here.length ? undefined : 'free'}>
-              {pick({ gear, port }, port, 'port-name', `Patch an interconnect to ${port}`)}
-              <span className="port-use">{uses(here)}</span>
-            </li>
-          )
-        }
         return (
-          <li key={port} className={here.some((p) => p.issue) ? 'clash' : here.length ? undefined : 'free'}>
-            <span className="port-name">{port}</span>
-            <div className="slot-faces">
-              {FACES.map((face) => {
-                const side = here.filter((p) => steckFaces(show, p).includes(face))
-                return (
-                  <div key={face} className={side.length ? 'slot-face' : 'slot-face free'}>
-                    {pick(
-                      { gear, port, face },
-                      face === 'inside' ? 'Inside' : 'Outside',
-                      'face-name',
-                      face === 'inside'
-                        ? `Patch an interconnect to the inside of ${port}`
-                        : `Patch a cable from outside the rack to ${port}`,
-                    )}
-                    <span className="port-use">{uses(side)}</span>
-                  </div>
-                )
-              })}
-            </div>
+          <li key={port} className={here.length > 1 ? 'clash' : here.length ? undefined : 'free'}>
+            {pick({ gear, port }, port, 'port-name', `Patch an interconnect or a tail to ${port}`)}
+            <span className="port-use">{uses(here)}</span>
           </li>
         )
       })}

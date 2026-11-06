@@ -1,40 +1,33 @@
-// Patching from the gear's side: picking a cable end for a port (or one side of a steck
-// slot). Links are the text in the cable, so this writes that text, and the cable and the
-// gear stay in step both ways.
+// Patching from the gear's side: picking a cable end for a port, or placing an end marked
+// Steck on a steck rail. Links are the text in the cable, so this writes that text, and
+// the cable and the gear stay in step both ways.
 
-import { fieldKey, gearModelOf, type PatchPoint, type PatchReport, type SteckFace } from './gear'
+import { fieldKey, type PatchPoint, type PatchReport } from './gear'
 import { endConnectors } from './labels'
-import { setTailCells, typeById, visibleTails } from './show'
+import { linkedCables, setTailCells, typeById, visibleTails } from './show'
+import { isSteck } from './stecks'
 import type { Cable, CableType, Gear, Show } from './types'
 
 export type End = 'A' | 'B'
 
-// A port on a unit, or one side of a slot on a steck rail.
-export type PatchTarget = { gear: Gear; port: string; face?: SteckFace }
+// A port on a unit.
+export type PatchTarget = { gear: Gear; port: string }
 
 // "Amp 1 · In A", the way a cable end names it.
 export const targetText = (t: PatchTarget) => `${t.gear.name.trim()} · ${t.port}`
-
-export const targetLabel = (t: PatchTarget) => (t.face ? `${targetText(t)}, ${t.face}` : targetText(t))
 
 const endField = (end: End) => (end === 'A' ? 'from' : 'to')
 
 const sameText = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
 
-// Where a cable end is plugged now, if picking it would move it: its steck slot, the
-// gear its From/To names, or other text in its From/To that patching to a port would
-// replace. Null when it's free, or already right here.
+// Where a cable end is plugged now, if picking it would move it: its steck, the gear its
+// From/To names, or other text in its From/To that patching to a port would replace.
+// Null when it's free, or already right here.
 export function endNow(report: PatchReport, cable: Cable, end: End, target: PatchTarget): string | null {
   const steck = end === 'A' ? cable.steckA : cable.steckB
   const steckAt = (end === 'A' ? cable.steckAAt : cable.steckBAt).trim()
   const text = (end === 'A' ? cable.from : cable.to).trim()
   const linked = report.byField.get(fieldKey(cable.id, endField(end)))
-  if (target.face) {
-    if (steck && steckAt && !sameText(steckAt, targetText(target))) return `steck ${steckAt}`
-    // A From/To on other gear moves off it; a place name stays put.
-    if (linked && linked.gear.id !== target.gear.id) return linked.text.trim()
-    return null
-  }
   if (steck) return steckAt ? `steck ${steckAt}` : 'a steck'
   if (text && !sameText(text, targetText(target))) return linked ? text : `“${text}”`
   return null
@@ -42,10 +35,6 @@ export function endNow(report: PatchReport, cable: Cable, end: End, target: Patc
 
 // Whether a cable end is already on this target.
 export function endIsHere(cable: Cable, end: End, target: PatchTarget): boolean {
-  if (target.face) {
-    const steck = end === 'A' ? cable.steckA : cable.steckB
-    return steck && sameText(end === 'A' ? cable.steckAAt : cable.steckBAt, targetText(target))
-  }
   return sameText(end === 'A' ? cable.from : cable.to, targetText(target))
 }
 
@@ -55,11 +44,9 @@ export function leavesRack(cable: Cable, target: PatchTarget): string | null {
   return cable.deployment === 'interconnect' && rackId && cable.rackId && cable.rackId !== rackId ? cable.rackId : null
 }
 
-// Plugs a cable end into the target. A port gets the end's From/To and takes it out of
-// any steck; a steck side ticks the end's Steck and sets its slot, and takes its From/To
-// off any gear it named (a place name stays). An interconnect patched to a racked unit
-// belongs to that unit's rack.
-export function plugEnd(show: Show, report: PatchReport, cableId: string, end: End, target: PatchTarget): Show {
+// Plugs a cable end into a port: its From/To names the port, and it comes out of any
+// steck. An interconnect patched to a racked unit belongs to that unit's rack.
+export function plugEnd(show: Show, cableId: string, end: End, target: PatchTarget): Show {
   const text = targetText(target)
   return {
     ...show,
@@ -67,16 +54,7 @@ export function plugEnd(show: Show, report: PatchReport, cableId: string, end: E
       if (cable.id !== cableId) return cable
       const rackId = cable.deployment === 'interconnect' && target.gear.rackId ? target.gear.rackId : cable.rackId
       const c = { ...cable, rackId }
-      if (!target.face) {
-        return end === 'A'
-          ? { ...c, from: text, steckA: false, steckAAt: '' }
-          : { ...c, to: text, steckB: false, steckBAt: '' }
-      }
-      const linked = report.byField.get(fieldKey(c.id, endField(end)))
-      const offGear = linked && !gearModelOf(show, linked.gear)?.steck
-      return end === 'A'
-        ? { ...c, steckA: true, steckAAt: text, from: offGear ? '' : c.from }
-        : { ...c, steckB: true, steckBAt: text, to: offGear ? '' : c.to }
+      return end === 'A' ? { ...c, from: text, steckA: false, steckAAt: '' } : { ...c, to: text, steckB: false, steckBAt: '' }
     }),
   }
 }
@@ -182,4 +160,76 @@ export function plugCells(show: Show, fan: FanEnd, from: number, targets: PatchT
       return cable.deployment === 'interconnect' && rackId ? { ...next, rackId } : next
     }),
   }
+}
+
+// Where a cable end marked Steck is placed ("SR 1 · 3"), or '' when it isn't marked or
+// hasn't been placed yet.
+export const steckPlace = (c: Cable, end: End) =>
+  (end === 'A' ? c.steckA : c.steckB) ? (end === 'A' ? c.steckAAt : c.steckBAt).trim() : ''
+
+// The cable end on the other side of a steck from this one: its neighbor in a linked path
+// (the cable before it meets its End A, the one after it its End B), when one of the two
+// is an interconnect and the other isn't, so one is inside the rack and the other out.
+export function steckPartner(show: Show, cable: Cable, end: End): { cable: Cable; end: End } | null {
+  const path = linkedCables(show, cable)
+  const at = path.findIndex((c) => c.id === cable.id)
+  const other = at < 0 ? undefined : path[end === 'A' ? at - 1 : at + 1]
+  if (!other || (other.deployment === 'interconnect') === (cable.deployment === 'interconnect')) return null
+  return { cable: other, end: end === 'A' ? 'B' : 'A' }
+}
+
+// Places a cable end in a steck rail's quarter (marking it Steck if it isn't), along with
+// the end it meets there (steckPartner) unless that's already placed somewhere else. An
+// interconnect placed on a racked rail belongs to that rack.
+export function placeEnd(show: Show, cableId: string, end: End, rail: Gear, quarter: string): Show {
+  const text = `${rail.name.trim()} · ${quarter}`
+  const cable = show.cables.find((c) => c.id === cableId)
+  if (!cable) return show
+  const partner = steckPartner(show, cable, end)
+  const put = (c: Cable, e: End): Cable => {
+    const rackId = c.deployment === 'interconnect' && rail.rackId ? rail.rackId : c.rackId
+    return e === 'A' ? { ...c, steckA: true, steckAAt: text, rackId } : { ...c, steckB: true, steckBAt: text, rackId }
+  }
+  return {
+    ...show,
+    cables: show.cables.map((c) => {
+      if (c.id === cableId) return put(c, end)
+      if (partner && c.id === partner.cable.id) {
+        const now = steckPlace(c, partner.end)
+        if (!now || sameText(now, text)) return put(c, partner.end)
+      }
+      return c
+    }),
+  }
+}
+
+// Takes a cable end off its rail, still marked Steck, to be placed again.
+export function unplaceEnd(show: Show, cableId: string, end: End): Show {
+  return {
+    ...show,
+    cables: show.cables.map((c) =>
+      c.id !== cableId ? c : end === 'A' ? { ...c, steckAAt: '' } : { ...c, steckBAt: '' },
+    ),
+  }
+}
+
+// Takes whatever a point on a rail is off it: a placed end goes back to waiting (still
+// marked Steck); typed text naming the quarter is cleared.
+export function unplacePoint(show: Show, point: PatchPoint): Show {
+  if (point.field === 'steckA' || point.field === 'steckB') {
+    return unplaceEnd(show, point.cable.id, point.field === 'steckA' ? 'A' : 'B')
+  }
+  return unplugPoint(show, point)
+}
+
+// Every cable end marked Steck, and the rail quarter it's on (its patch point), if any.
+export function steckEnds(show: Show, report: PatchReport): { cable: Cable; end: End; on?: PatchPoint }[] {
+  return show.cables.flatMap((cable) =>
+    (['A', 'B'] as const)
+      .filter((end) => (end === 'A' ? cable.steckA : cable.steckB))
+      .map((end) => {
+        const on = report.byField.get(fieldKey(cable.id, `steck${end}`))
+        return { cable, end, on: on && isSteck(on.gear) ? on : undefined }
+      }),
+  )
 }

@@ -638,7 +638,7 @@ export function CableEditor({ show, cable, update, onClose, onSelect, onOpenGear
                       className={pointClass(point) || undefined}
                       title={pointTitle(point)}
                       value={cable[atKey]}
-                      placeholder="Rail and slot, e.g. SR 1 · 3"
+                      placeholder="Rail and quarter, e.g. SR 1 · 3"
                       aria-label={`Steck rail and slot for End ${end}`}
                       onChange={(e) => patch((c) => ({ ...c, [atKey]: e.target.value }))}
                     />

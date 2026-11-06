@@ -31,7 +31,7 @@ export function GearPickerDialog({ show, rack, onAdd, onCancel }: Props) {
   }
   const q = query.trim().toLowerCase()
   const rows = show.gear
-    .filter((g) => g.rackId !== rack.id)
+    .filter((g) => g.rackId !== rack.id && !g.steck)
     .filter((g) => {
       if (!q) return true
       const where = show.racks.find((r) => r.id === g.rackId)?.name ?? ''

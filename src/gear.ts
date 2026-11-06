@@ -1,11 +1,12 @@
-import { GEAR_MODEL_HEADERS, parseCsv, parseHalfWidth, parseRu, parseYes, RU_HEADERS, toCsv, type GearModelRow } from './csv'
+import { GEAR_MODEL_HEADERS, parseCsv, parseHalfWidth, parseRu, RU_HEADERS, toCsv, type GearModelRow } from './csv'
 import { newId } from './ids'
 import { endConnectors } from './labels'
 import { gearMatcher, type GearHit } from './match'
 import { gearModelOf, gearRu, modelKey } from './models'
 import { expandPorts, findPort, portKey, portsAfter, textSeries } from './ports'
 import { frontRowsUsed, placeGear, placeUnplaced } from './racking'
-import { ensureRack, fillsSteckSlot, rackById, starterModelRows, steckMount, visibleTails } from './show'
+import { ensureRack, rackById, starterModelRows, steckMount, typeById, visibleTails } from './show'
+import { connectorInfo, isSteck, quarterRoom, steckPorts, steckSummary, tailRoom } from './stecks'
 import type { Cable, Gear, GearCategory, GearModel, Show } from './types'
 
 export { gearMatcher, gearModelOf, gearRu, modelKey, type GearHit }
@@ -23,6 +24,7 @@ export function newGear(overrides: Partial<Gear> = {}): Gear {
     rackSide: 'front',
     rackSlot: null,
     notes: '',
+    steck: null,
     ...overrides,
   }
 }
@@ -44,8 +46,9 @@ export function categoryById(show: Show, id: string | null): GearCategory | unde
 }
 
 // Suggestions for patch cells, so typing "Amp" offers Amp 1, Amp 2….
+// Unit names, for suggestions. Stecks are picked in their own slot field.
 export function gearNames(show: Show): string[] {
-  const names = new Set(show.gear.map((g) => g.name.trim()).filter(Boolean))
+  const names = new Set(show.gear.filter((g) => !g.steck).map((g) => g.name.trim()).filter(Boolean))
   return [...names].sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }))
 }
 
@@ -61,7 +64,7 @@ export function rackRu(show: Show, rackId: string): number {
 }
 
 export function gearPorts(show: Show, g: Gear): string[] {
-  return expandPorts(gearModelOf(show, g)?.ports ?? '')
+  return g.steck ? steckPorts() : expandPorts(gearModelOf(show, g)?.ports ?? '')
 }
 
 // Units that share this one's model (and so its ports), including itself.
@@ -93,7 +96,6 @@ export function setModelField(
             categoryId: g.categoryId,
             ru: null,
             halfWidth: false,
-            steck: false,
             ports: '',
             notes: '',
             ...changes,
@@ -117,7 +119,6 @@ export function carryModelPorts(show: Show, gearId: string, before: Pick<Gear, '
     ports: old.ports,
     ru: old.ru,
     halfWidth: old.halfWidth,
-    steck: old.steck,
     categoryId: old.categoryId,
     notes: old.notes,
   })
@@ -215,7 +216,6 @@ export function mergeGearModels(show: Show, rows: GearModelRow[], mode: 'replace
       categoryId: categoryFor(row.category),
       ru: parseRu(row.ru),
       halfWidth: parseHalfWidth(row.width),
-      steck: parseYes(row.steck),
       ports: row.ports,
       notes: row.notes,
     }
@@ -255,7 +255,6 @@ export function gearModelsToCsv(show: Show): string {
       categoryById(show, m.categoryId)?.name ?? '',
       m.ru == null ? '' : String(m.ru),
       m.halfWidth ? 'Half' : '',
-      m.steck ? 'Yes' : '',
       m.ports,
       m.notes,
     ]),
@@ -285,11 +284,13 @@ export interface PatchPoint {
 export interface PatchReport {
   byGear: Map<string, PatchPoint[]>
   byField: Map<string, PatchPoint>
+  // Warnings, counted by plug: on gear ports, and on steck slots.
   issues: number
+  steckIssues: number
   // "Switch 1 · 3" for every listed port nothing is patched to yet (steck rails aside).
   freePorts: string[]
-  // "SR 1 · 3" for steck rail slots with room: empty on the inside (for interconnects), on
-  // the outside (for cables from the rest of the world), or empty on both (for a tail).
+  // "SR 1 · 3" for steck rail quarters with room: on the inside (for interconnects), on the
+  // outside (for cables from the rest of the world), or empty (for a tail).
   freeSteckSlots: Record<SteckFace | 'whole', string[]>
 }
 
@@ -371,8 +372,8 @@ export function patchReport(show: Show): PatchReport {
     else onPort.set(key, [p])
   }
   for (const list of onPort.values()) {
-    if (gearModelOf(show, list[0].gear)?.steck) {
-      steckSlotIssues(show, list)
+    if (isSteck(list[0].gear)) {
+      steckPortIssues(show, list)
       continue
     }
     for (const p of list) {
@@ -398,44 +399,78 @@ export function patchReport(show: Show): PatchReport {
   for (const g of show.gear) {
     const name = g.name.trim()
     if (!name) continue
-    const steck = gearModelOf(show, g)?.steck ?? false
+    const steck = isSteck(g)
     for (const port of portsOf(g)) {
       const here = onPort.get(`${g.id}|${portKey(port)}`) ?? []
       if (!steck) {
         if (!here.length) freePorts.push(`${name} · ${port}`)
         continue
       }
-      const taken = new Set(here.flatMap((p) => steckFaces(show, p)))
-      if (!taken.has('inside')) freeSteckSlots.inside.push(`${name} · ${port}`)
-      if (!taken.has('outside')) freeSteckSlots.outside.push(`${name} · ${port}`)
-      if (!taken.size) freeSteckSlots.whole.push(`${name} · ${port}`)
+      // A tail fills a quarter; connectors share one, side by side.
+      if (here.some((p) => isTailMount(show, p))) continue
+      if (!here.length) freeSteckSlots.whole.push(`${name} · ${port}`)
+      const room = quarterRoom(g.steck!.ru)
+      for (const face of ['inside', 'outside'] as const) {
+        if (sideUse(show, here, face) < room) freeSteckSlots[face].push(`${name} · ${port}`)
+      }
     }
   }
 
   // Counted by plug, so a From and Patch A cell on the same connector warn once.
-  const issues = new Set(points.filter((p) => p.issue).map((p) => p.slot)).size
-  return { byGear, byField, issues, freePorts, freeSteckSlots }
+  const warned = (steck: boolean) => new Set(points.filter((p) => p.issue && isSteck(p.gear) === steck).map((p) => p.slot)).size
+  return { byGear, byField, issues: warned(false), steckIssues: warned(true), freePorts, freeSteckSlots }
 }
 
-// The connector at a steck point: what mounts there, if it's a cable end's steck.
-function steckConnector(show: Show, p: PatchPoint): string {
-  return p.field.startsWith('steck') ? steckMount(show, p.cable, p.field === 'steckA' ? 'A' : 'B').connector : ''
+const pointEnd = (p: PatchPoint): 'A' | 'B' =>
+  p.field === 'from' || p.field === 'steckA' || p.field.startsWith('patchA') ? 'A' : 'B'
+
+// The connector at a patch point: what mounts in a steck, a tail's jack for a patch cell,
+// or the cable's own connector at that end.
+function pointConnector(show: Show, p: PatchPoint): string {
+  const end = pointEnd(p)
+  if (p.field.startsWith('steck')) return steckMount(show, p.cable, end).connector
+  const type = typeById(show, p.cable.typeId)
+  if (p.field.startsWith('patch') && type?.part === 'Trunk') {
+    const tail = typeById(show, end === 'A' ? p.cable.tailATypeId : p.cable.tailBTypeId)
+    if (tail) return tail.endB
+  }
+  return (end === 'A' ? type?.endA : type?.endB) ?? ''
 }
 
-// A steck slot holds one G-block (or other multipin), or D-size connectors two per rack
-// unit of rail, counted on each side: an interconnect inside and the cable it meets
-// outside are the same connector. Warns on every connector in a slot that's over.
-function steckSlotIssues(show: Show, list: PatchPoint[]) {
+// Whether a point is a tail's G-block mounted in a steck quarter.
+const isTailMount = (show: Show, p: PatchPoint) =>
+  p.field.startsWith('steck') && !!steckMount(show, p.cable, pointEnd(p)).tail
+
+// How much of a quarter's side its connectors take, in D-size spaces.
+const sideUse = (show: Show, points: PatchPoint[], face: SteckFace) =>
+  points
+    .filter((p) => steckFaces(show, p).includes(face))
+    .reduce((n, p) => n + connectorInfo(pointConnector(show, p)).size, 0)
+
+// A steck quarter holds one tail's G-block, which fills it, or panel connectors side by
+// side, two D-size per rack unit of rail on each side (an interconnect inside and the cable
+// it meets outside are the same connector). Warns on a quarter that's over, on something
+// sharing a quarter with a tail, and on a G-block too big for the rail.
+function steckPortIssues(show: Show, list: PatchPoint[]) {
+  const rail = list[0].gear
+  const ru = rail.steck!.ru
+  const label = `${gearLabel(rail)} · ${list[0].port}`
   const ends = list.filter((p, i) => list.findIndex((x) => x.slot === p.slot) === i)
-  const room = 2 * (gearRu(show, list[0].gear) ?? 1)
-  const slot = `${gearLabel(list[0].gear)} · ${list[0].port}`
-  const big = ends.find((p) => fillsSteckSlot(steckConnector(show, p)))
+  const who = (p: PatchPoint) => p.cable.name || 'a cable'
+  const tail = ends.find((p) => isTailMount(show, p))
+  const type = tail && steckMount(show, tail.cable, pointEnd(tail)).tail
   let issue: string | null = null
-  for (const face of ['inside', 'outside'] as const) {
-    const on = ends.filter((p) => steckFaces(show, p).includes(face))
-    if (big && on.length > 1) issue = `${slot}: ${big.cable.name || 'a cable'}'s ${steckConnector(show, big)} takes the whole slot`
-    else if (on.length > room) issue = `${slot} holds ${room} connectors on its ${face}; ${on.length} are there`
-    if (issue) break
+  if (tail && ends.length > 1) issue = `${label}: ${who(tail)}'s tail takes the whole quarter`
+  else if (type && type.channels > tailRoom(ru)) {
+    issue = `${label}: a ${ru}RU rail takes G-blocks up to ${tailRoom(ru)}pr, and ${type.name} is bigger`
+  } else if (!tail) {
+    for (const face of ['inside', 'outside'] as const) {
+      const used = sideUse(show, ends, face)
+      if (used > quarterRoom(ru)) {
+        issue = `${label} has room for ${quarterRoom(ru)} connectors on its ${face} on a ${ru}RU rail, and ${used} are there`
+        break
+      }
+    }
   }
   if (!issue) return
   for (const p of list) p.issue ??= issue
@@ -457,8 +492,8 @@ export function patchSeries(show: Show, text: string, count: number): string[] {
   return textSeries(text, count)
 }
 
-// After a unit is renamed, rewrites the ends and patch points that linked to its old
-// name ("Amp 1-A" becomes "Amp 1A-A") so they stay linked.
+// After a unit (or a steck) is renamed, rewrites the ends, steck slots and patch points
+// that linked to its old name ("Amp 1-A" becomes "Amp 1A-A") so they stay linked.
 export function renameGearLinks(show: Show, gearId: string, oldName: string): Show {
   const unit = show.gear.find((g) => g.id === gearId)
   const name = unit?.name.trim() ?? ''
@@ -474,14 +509,17 @@ export function renameGearLinks(show: Show, gearId: string, oldName: string): Sh
   const cables = show.cables.map((c) => {
     const from = swap(c.from)
     const to = swap(c.to)
+    const steckAAt = swap(c.steckAAt)
+    const steckBAt = swap(c.steckBAt)
     const tails = c.tails.map((t) => {
       const patchA = swap(t.patchA)
       const patchB = swap(t.patchB)
       return patchA === t.patchA && patchB === t.patchB ? t : { ...t, patchA, patchB }
     })
-    if (from === c.from && to === c.to && tails.every((t, i) => t === c.tails[i])) return c
+    const same = from === c.from && to === c.to && steckAAt === c.steckAAt && steckBAt === c.steckBAt
+    if (same && tails.every((t, i) => t === c.tails[i])) return c
     changed = true
-    return { ...c, from, to, tails }
+    return { ...c, from, to, steckAAt, steckBAt, tails }
   })
   return changed ? { ...show, cables } : show
 }
@@ -564,7 +602,11 @@ export function copyGear(show: Show, gearId: string, count: number): Show {
 
 
 // Gear in category order, with uncategorized gear last.
-export function gearSections(show: Show, gear: Gear[] = show.gear): { category: GearCategory | null; gear: Gear[] }[] {
+// The show's gear by category. Stecks aren't gear here; the gear list counts them by size.
+export function gearSections(
+  show: Show,
+  gear: Gear[] = show.gear.filter((g) => !g.steck),
+): { category: GearCategory | null; gear: Gear[] }[] {
   const sections = show.gearCategories.map((category) => ({
     category: category as GearCategory | null,
     gear: gear.filter((g) => g.categoryId === category.id),
@@ -631,6 +673,17 @@ function rackLines(show: Show): GearLine[] {
     line.qty++
     bySize.set(key, line)
   }
+  // Steck rails are built for the show, counted by size with their names ("SR 1–3").
+  const names = new Map<string, string[]>()
+  for (const g of show.gear) {
+    if (!g.steck) continue
+    const key = `steck:${g.steck.ru}`
+    const line = bySize.get(key) ?? { key, manufacturer: '', model: steckSummary(g.steck), qty: 0, units: '', notes: '' }
+    line.qty++
+    bySize.set(key, line)
+    if (g.name.trim()) names.set(key, [...(names.get(key) ?? []), g.name.trim()])
+  }
+  for (const [key, list] of names) bySize.get(key)!.units = nameRuns(list)
   return [...bySize.values()].sort((a, b) => a.model.localeCompare(b.model, undefined, { numeric: true }))
 }
 

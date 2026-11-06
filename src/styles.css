@@ -3051,35 +3051,6 @@ button.add-unit {
   border-color: var(--accent);
 }
 
-.port-map .slot-faces {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.port-map .slot-face {
-  display: grid;
-  grid-template-columns: 64px 1fr;
-  gap: 8px;
-  align-items: baseline;
-}
-
-.port-map .face-name {
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.port-map .slot-face.free .face-name,
-.port-map .slot-face.free .port-use {
-  color: var(--muted);
-  font-weight: 400;
-}
-
-.rack-steck h4 {
-  margin: 10px 0 2px;
-}
-
 .port-picker {
   width: 560px;
   max-height: calc(100vh - 48px);
@@ -3233,4 +3204,105 @@ button.add-unit {
 
 .pp-run-hint {
   margin: -4px 0 8px;
+}
+
+/* Stecks, built on the rack page: a head with name and size, then the four slots */
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.steck-build {
+  margin: 8px 0 14px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.sb-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.sb-name {
+  width: 120px;
+  font-weight: 600;
+}
+
+.sb-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+}
+
+.sb-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.sb-slot.empty {
+  border-style: dashed;
+  background: none;
+}
+
+.sb-slot-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sb-slot.clash {
+  border-color: var(--warn);
+}
+
+.sb-num {
+  font-weight: 700;
+  min-width: 1.2em;
+}
+
+.sb-placed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+}
+
+.sb-placed li {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 3px 0;
+}
+
+.sb-placed li + li {
+  border-top: 1px solid var(--border);
+}
+
+.sb-placed-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sb-issue {
+  margin: 0;
+}
+
+.pp-place {
+  padding: 6px 10px;
 }

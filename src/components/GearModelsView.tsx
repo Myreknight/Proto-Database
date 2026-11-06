@@ -93,7 +93,6 @@ export function GearModelsView({ show, update, toolbar, onAdded }: Props) {
       categoryId: null,
       ru: null,
       halfWidth: false,
-      steck: false,
       ports: '',
       notes: '',
     }
@@ -206,7 +205,6 @@ export function GearModelsView({ show, update, toolbar, onAdded }: Props) {
               <th>Category</th>
               <th className="num">RU</th>
               <th title="Half the rack's width, so two sit side by side">Half</th>
-              <th title="A steck rail or panel: its ports are slots for tail connectors">Steck</th>
               <th>Ports</th>
               <th>Notes</th>
               <th className="num">Units</th>
@@ -266,14 +264,6 @@ export function GearModelsView({ show, update, toolbar, onAdded }: Props) {
                       checked={m.halfWidth}
                       aria-label="Half width"
                       onChange={(e) => patchModel(m.id, { halfWidth: e.target.checked })}
-                    />
-                  </td>
-                  <td className="center">
-                    <input
-                      type="checkbox"
-                      checked={m.steck}
-                      aria-label="Steck rail"
-                      onChange={(e) => patchModel(m.id, { steck: e.target.checked })}
                     />
                   </td>
                   <td>

@@ -14,5 +14,5 @@ export function gearModelOf(show: Show, g: Pick<Gear, 'manufacturer' | 'model'>)
 
 // Rack units for one of the unit (from its model), or null if it doesn't rack-mount.
 export function gearRu(show: Show, g: Gear): number | null {
-  return gearModelOf(show, g)?.ru ?? null
+  return g.steck ? g.steck.ru : (gearModelOf(show, g)?.ru ?? null)
 }

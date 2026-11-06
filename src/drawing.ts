@@ -1,9 +1,9 @@
-import { patchReport, type PatchPoint } from './gear'
-import { gearModelOf } from './models'
-import { expandPorts, portKey } from './ports'
+import { patchReport, steckFaces, type PatchPoint } from './gear'
+import { portKey } from './ports'
 import { INCHES_PER_U, placedIn, rackProblems, topOf } from './racking'
 import { steckMount } from './show'
-import type { Rack, RackSide, Show } from './types'
+import { connectorInfo, STECK_QUARTERS } from './stecks'
+import type { Gear, Rack, RackSide, Show } from './types'
 
 // A rack drawing laid out in real inches (1U = 1.75 in, 19 in wide), so the same layout
 // draws on screen, prints, and exports to SVG and DXF at true scale.
@@ -107,9 +107,9 @@ export function rackDrawing(show: Show, rack: Rack, opts: { views?: RackSide[]; 
   const title = opts.title ?? []
   const placed = placedIn(show, rack.id)
   const problems = rackProblems(show, rack)
-  // What's mounted in each steck rail's slots, by rail.
-  const patches = placed.some((p) => gearModelOf(show, p.gear)?.steck) ? patchReport(show) : null
-  const steckIn = (gearId: string) => (patches?.byGear.get(gearId) ?? []).filter((pt) => pt.field.startsWith('steck'))
+  // What's patched to each steck's slots, by steck.
+  const patches = placed.some((p) => p.gear.steck) ? patchReport(show) : null
+  const steckIn = (gearId: string) => patches?.byGear.get(gearId) ?? []
   const rows = Math.max(rack.size ?? 0, ...placed.map(topOf), 1)
   const top = MARGIN + title.length * TITLE_LINE + HEAD
   const bayH = rows * U
@@ -177,11 +177,8 @@ export function rackDrawing(show: Show, rack: Rack, opts: { views?: RackSide[]; 
       boxes.push({ x: x + 0.05, y: y + 0.04, w: w - 0.1, h: h - 0.08, kind, gearId: p.gear.id, problem: problems.get(p.gear.id) ?? null, drag })
       if (kind === 'back' && covered(p)) continue
 
-      // A steck rail seen from its face: its slots, each with the tail mounted in it.
-      const library = gearModelOf(show, p.gear)
-      const slotNames = kind === 'unit' && library?.steck ? expandPorts(library.ports) : []
-      if (slotNames.length) {
-        drawSlots(boxes, texts, { x, y, w, h }, p.gear.id, p.gear.name.trim(), slotNames, steckIn(p.gear.id), show, drag)
+      if (kind === 'unit' && p.gear.steck) {
+        drawSteck(boxes, texts, { x, y, w, h }, p.gear, steckIn(p.gear.id), show, drag)
         continue
       }
 
@@ -218,61 +215,64 @@ export function rackDrawing(show: Show, rack: Rack, opts: { views?: RackSide[]; 
   }
 }
 
-// Steck rail slots across the rail, left to right in port order, after a strip with the
-// rail's name. Each slot shows its number and splits among the connectors mounted in it
-// (one G-block, or a couple of etherCONs), each labeled with its cable.
-function drawSlots(
+// A steck rail seen from its face: its four quarters, with the tail's cable name across a
+// quarter a tail fills, or each connector's cable side by side (the cable outside the
+// rail, else the interconnect inside). An empty quarter is left blank.
+function drawSteck(
   boxes: DrawBox[],
   texts: DrawText[],
   area: { x: number; y: number; w: number; h: number },
-  gearId: string,
-  railName: string,
-  slots: string[],
+  gear: Gear,
   points: PatchPoint[],
   show: Show,
   drag: DragInfo | undefined,
 ) {
+  const railName = gear.name.trim()
   const nameW = railName ? Math.min(3, area.w * 0.16) : 0
   if (railName) {
     const size = Math.min(0.55, area.h * 0.3)
     texts.push({ x: area.x + 0.3, y: area.y + area.h / 2 + size * 0.35, size, text: fit(railName, nameW - 0.4, size), anchor: 'start', bold: true })
   }
   const left = area.x + nameW + 0.2
-  const cellW = (area.w - nameW - 0.4) / slots.length
-  slots.forEach((slot, i) => {
+  const cellW = (area.w - nameW - 0.4) / STECK_QUARTERS.length
+  const endOf = (pt: PatchPoint) => (pt.field === 'steckA' || pt.field === 'from' ? 'A' : 'B')
+  STECK_QUARTERS.forEach((quarter, i) => {
     const cx = left + i * cellW
-    const here = points.filter((pt) => pt.port && portKey(pt.port) === portKey(slot))
-    // One cell per connector in the slot, left to right by cable name.
-    const ends = here
-      .filter((pt, k) => here.findIndex((x) => x.slot === pt.slot) === k)
-      .sort((a, b) => a.cable.name.localeCompare(b.cable.name, undefined, { numeric: true, sensitivity: 'base' }))
     const numSize = Math.min(0.4, area.h * 0.2)
-    texts.push({ x: cx + 0.25, y: area.y + 0.25 + numSize, size: numSize, text: slot, anchor: 'start', muted: true })
-    if (!ends.length) {
-      boxes.push({ x: cx + 0.08, y: area.y + 0.2, w: cellW - 0.16, h: area.h - 0.4, kind: 'slot', gearId, problem: null, drag })
+    texts.push({ x: cx + 0.25, y: area.y + 0.25 + numSize, size: numSize, text: quarter, anchor: 'start', muted: true })
+    const here = points.filter(
+      (pt, k) => pt.port && portKey(pt.port) === portKey(quarter) && points.findIndex((x) => x.slot === pt.slot) === k,
+    )
+    const problem = here.find((pt) => pt.issue)?.issue ?? null
+    const tail = here.find((pt) => pt.field.startsWith('steck') && steckMount(show, pt.cable, endOf(pt)).tail)
+    const outside = here.filter((pt) => steckFaces(show, pt).includes('outside'))
+    const inside = here.filter((pt) => steckFaces(show, pt).includes('inside'))
+    const shown = tail ? [tail] : outside.length >= inside.length ? outside : inside
+    if (!shown.length) {
+      boxes.push({ x: cx + 0.08, y: area.y + 0.2, w: cellW - 0.16, h: area.h - 0.4, kind: 'slot', gearId: gear.id, problem, drag })
       return
     }
-    const subW = cellW / ends.length
-    ends.forEach((pt, k) => {
+    const subW = cellW / shown.length
+    shown.forEach((pt, k) => {
       const sx = cx + k * subW
-      boxes.push({ x: sx + 0.08, y: area.y + 0.2, w: subW - 0.16, h: area.h - 0.4, kind: 'slot', gearId, problem: pt.issue, drag })
+      boxes.push({ x: sx + 0.08, y: area.y + 0.2, w: subW - 0.16, h: area.h - 0.4, kind: 'slot', gearId: gear.id, problem, drag })
       const size = Math.min(0.6, area.h * 0.28, subW * 0.17)
       const room = subW - 0.35
-      const name = pt.cable.name.trim() || 'Unnamed'
       const cy = area.y + area.h / 2
+      const name = pt.cable.name.trim() || 'Unnamed'
       // A name too long for the cell wraps onto two lines ("CPU/Amp" over "1a.1").
       const lines = textWidth(name, size) > room ? wrapTwo(name) : [name]
       if (lines.length === 2) {
         const small = size * 0.85
         lines.forEach((line, li) =>
-          texts.push({ x: sx + subW / 2, y: cy + (li - 0.5) * small * 1.05 + small * 0.2, size: small, text: fit(line, room, small), anchor: 'middle', bold: true, problem: !!pt.issue }),
+          texts.push({ x: sx + subW / 2, y: cy + (li - 0.5) * small * 1.05 + small * 0.2, size: small, text: fit(line, room, small), anchor: 'middle', bold: true, problem: !!problem }),
         )
       } else {
-        texts.push({ x: sx + subW / 2, y: cy + size * 0.45, size, text: fit(name, room, size), anchor: 'middle', bold: true, problem: !!pt.issue })
+        texts.push({ x: sx + subW / 2, y: cy + size * 0.45, size, text: fit(name, room, size), anchor: 'middle', bold: true, problem: !!problem })
       }
       // What it is under the name, when there's room: the tail, or the connector.
-      const mount = steckMount(show, pt.cable, pt.field === 'steckA' ? 'A' : 'B')
-      const detail = mount.tail?.name ?? mount.connector
+      const mount = steckMount(show, pt.cable, endOf(pt))
+      const detail = mount.tail?.name ?? connectorInfo(mount.connector).short
       if (detail && area.h >= (lines.length === 2 ? 3 : 1.5)) {
         const small = size * 0.7
         texts.push({ x: sx + subW / 2, y: area.y + area.h - 0.35, size: small, text: fit(detail, room, small), anchor: 'middle', muted: true })

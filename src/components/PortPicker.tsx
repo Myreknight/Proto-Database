@@ -1,6 +1,6 @@
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react'
 import type { Update } from '../App'
-import { gearPorts, steckFaces, type PatchReport } from '../gear'
+import { gearPorts, type PatchReport } from '../gear'
 import {
   cellIsHere,
   endIsHere,
@@ -9,7 +9,6 @@ import {
   leavesRack,
   plugCells,
   plugEnd,
-  targetLabel,
   targetText,
   unplugPoint,
   type End,
@@ -65,15 +64,13 @@ const cellRange = (cells: FanCell[]) => {
   return a.label.startsWith('#') ? `#${n(a)}–#${n(b)}` : `Connectors ${n(a)}–${n(b)}`
 }
 
-// Picking what goes on a port (or one side of a steck slot). Interconnects and the tails
-// in the unit's rack come first; a slot's outside takes cables from the rest of the world.
+// Picking what goes on a port. Interconnects and the tails in the unit's rack come first.
 // Type to filter, arrows to move, Enter to patch.
 export function PortPicker({ show, report, target, update, onClose, onOpenCable }: Props) {
   const [query, setQuery] = useState('')
   // How many pairs in a row to patch onto the ports from this one on.
   const [run, setRun] = useState(1)
-  const label = targetLabel(target)
-  const outside = target.face === 'outside'
+  const label = targetText(target)
   const rack = rackById(show, target.gear.rackId)
   const rackName = rack?.name || 'this rack'
 
@@ -87,19 +84,15 @@ export function PortPicker({ show, report, target, update, onClose, onOpenCable 
     [opener],
   )
 
-  // What's on a port now (on this side, for a steck slot), one per plug.
+  // What's on a port now, one per plug.
   const on = (t: PatchTarget) =>
     (report.byGear.get(t.gear.id) ?? []).filter(
-      (p, i, all) =>
-        p.port != null &&
-        portKey(p.port) === portKey(t.port) &&
-        (!t.face || steckFaces(show, p).includes(t.face)) &&
-        all.findIndex((x) => x.slot === p.slot) === i,
+      (p, i, all) => p.port != null && portKey(p.port) === portKey(t.port) && all.findIndex((x) => x.slot === p.slot) === i,
     )
   const here = on(target)
 
   // The rows to pick from, grouped.
-  const fans = outside ? [] : fanEnds(show, report)
+  const fans = fanEnds(show, report)
   const fanOf = (c: Cable, end: End) => fans.find((f) => f.cable.id === c.id && f.end === end)
   const cableRow = (c: Cable): Row => ({
     key: c.id,
@@ -110,25 +103,17 @@ export function PortPicker({ show, report, target, update, onClose, onOpenCable 
   const fanRow = (f: FanEnd): Row => ({ key: `${f.cable.id}-${f.end}`, kind: 'fan', fan: f })
   const interconnects = show.cables.filter((c) => c.deployment === 'interconnect').sort(byName)
   const tails = fans.filter((f) => f.cable.deployment !== 'interconnect').sort((a, b) => byName(a.cable, b.cable))
-  const groups: Group[] = outside
+  const groups: Group[] = rack
     ? [
-        {
-          title: 'Bundled cables',
-          rows: show.cables.filter((c) => c.deployment === 'bundled').sort(byName).map(cableRow),
-        },
-        { title: 'Loose cables', rows: show.cables.filter((c) => c.deployment === 'loose').sort(byName).map(cableRow) },
+        { title: `Interconnects in ${rackName}`, rows: interconnects.filter((c) => c.rackId === rack.id).map(cableRow) },
+        { title: `Tails in ${rackName}`, rows: tails.filter((f) => f.rackId === rack.id).map(fanRow) },
+        { title: 'Other interconnects', rows: interconnects.filter((c) => c.rackId !== rack.id).map(cableRow) },
+        { title: 'Tails elsewhere', rows: tails.filter((f) => f.rackId !== rack.id).map(fanRow), searchOnly: true },
       ]
-    : rack
-      ? [
-          { title: `Interconnects in ${rackName}`, rows: interconnects.filter((c) => c.rackId === rack.id).map(cableRow) },
-          { title: `Tails in ${rackName}`, rows: tails.filter((f) => f.rackId === rack.id).map(fanRow) },
-          { title: 'Other interconnects', rows: interconnects.filter((c) => c.rackId !== rack.id).map(cableRow) },
-          { title: 'Tails elsewhere', rows: tails.filter((f) => f.rackId !== rack.id).map(fanRow), searchOnly: true },
-        ]
-      : [
-          { title: 'Interconnects', rows: interconnects.map(cableRow) },
-          { title: 'Tails', rows: tails.map(fanRow), searchOnly: true },
-        ]
+    : [
+        { title: 'Interconnects', rows: interconnects.map(cableRow) },
+        { title: 'Tails', rows: tails.map(fanRow), searchOnly: true },
+      ]
 
   const q = query.trim().toLowerCase()
   const has = (values: string[]) => !q || values.some((v) => v.toLowerCase().includes(q))
@@ -158,7 +143,7 @@ export function PortPicker({ show, report, target, update, onClose, onOpenCable 
         `${where ? 'It' : name} is an interconnect in ${rackById(show, fromRack)?.name || 'another rack'}, and patching it here moves it to ${rackName}.`,
     ].filter(Boolean)
     if (notes.length && !confirm(`${notes.join(' ')} Do you want to move it to ${label}?`)) return
-    update((s) => plugEnd(s, report, c.id, end, target))
+    update((s) => plugEnd(s, c.id, end, target))
     onClose()
   }
 
@@ -292,13 +277,6 @@ export function PortPicker({ show, report, target, update, onClose, onOpenCable 
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
       >
         <h2>Patch to {label}</h2>
-        {target.face && (
-          <p className="muted small">
-            {outside
-              ? "The slot's outside, where cables run out of the rack to the rest of the world."
-              : "The slot's inside, where interconnects and tails from the rack's gear plug in."}
-          </p>
-        )}
 
         {here.length > 0 && (
           <div className="pp-here">
@@ -321,7 +299,7 @@ export function PortPicker({ show, report, target, update, onClose, onOpenCable 
             className="pp-search"
             type="search"
             autoFocus
-            placeholder={outside ? 'Search cables…' : 'Search interconnects and tails…'}
+            placeholder="Search interconnects and tails…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onSearchKey}
@@ -351,9 +329,7 @@ export function PortPicker({ show, report, target, update, onClose, onOpenCable 
             <p className="muted small pad">
               {q
                 ? `Nothing matches “${query}”.`
-                : outside
-                  ? 'No bundled or loose cables yet.'
-                  : 'No interconnects or tails yet. Set a cable’s deployment to Interconnect to patch it from here.'}
+                : 'No interconnects or tails yet. Set a cable’s deployment to Interconnect to patch it from here.'}
             </p>
           ) : (
             shown.map((g) => (

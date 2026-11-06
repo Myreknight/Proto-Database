@@ -129,9 +129,17 @@ export interface Gear {
   rackSide: RackSide
   rackSlot: RackSlot | null
   notes: string
+  // Set when this is a steck rail built into a rack rather than a unit of gear (see stecks.ts).
+  steck: SteckBuild | null
 }
 
 export type RackSide = 'front' | 'rear'
+
+// A steck rail: so many rack units tall, with four quarters across it that marked cable
+// ends are placed in (see stecks.ts).
+export interface SteckBuild {
+  ru: number
+}
 export type RackSlot = 'left' | 'right'
 
 // The show's model library. Ports are set once per model, so every D80 shares one list,
@@ -146,8 +154,6 @@ export interface GearModel {
   ru: number | null
   // Half the rack's width, so two can sit side by side in the same rack units.
   halfWidth: boolean
-  // A steck rail or panel: its ports are slots that tail connectors (G-blocks) mount in.
-  steck: boolean
   ports: string
   notes: string
 }

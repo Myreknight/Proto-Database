@@ -1,16 +1,22 @@
 import { Fragment, type MouseEvent, type ReactNode } from 'react'
 
 // Just enough Markdown for the tips page (site/TIPS.md): headings, paragraphs, bullet
-// lists, tables and rules, with **bold**, `code` and [links] inside them.
+// lists (one level of nesting), tables and rules, with **bold**, `code` and [links].
+
+interface Item {
+  text: string
+  sub: string[]
+}
 
 type Block =
   | { kind: 'heading'; level: number; text: string }
   | { kind: 'para'; text: string }
-  | { kind: 'list'; items: string[] }
+  | { kind: 'list'; items: Item[] }
   | { kind: 'table'; head: string[]; rows: string[][] }
   | { kind: 'rule' }
 
 const LIST_ITEM = /^[-*]\s+/
+const SUB_ITEM = /^\s{2,}[-*]\s+/
 const RULE = /^-{3,}\s*$/
 
 function parse(source: string): Block[] {
@@ -41,8 +47,11 @@ function parse(source: string): Block[] {
       const [head = [], ...body] = rows.filter((r) => !r.every((c) => /^:?-+:?$/.test(c)))
       blocks.push({ kind: 'table', head, rows: body })
     } else if (LIST_ITEM.test(line)) {
-      const items: string[] = []
-      for (; i < lines.length && LIST_ITEM.test(lines[i]); i++) items.push(lines[i].replace(LIST_ITEM, ''))
+      const items: Item[] = []
+      for (; i < lines.length && (LIST_ITEM.test(lines[i]) || (items.length && SUB_ITEM.test(lines[i]))); i++) {
+        if (SUB_ITEM.test(lines[i])) items[items.length - 1].sub.push(lines[i].replace(SUB_ITEM, ''))
+        else items.push({ text: lines[i].replace(LIST_ITEM, ''), sub: [] })
+      }
       blocks.push({ kind: 'list', items })
     } else {
       const text: string[] = []
@@ -115,7 +124,16 @@ export function Markdown({ source, idPrefix = '' }: { source: string; idPrefix?:
             return (
               <ul key={k}>
                 {b.items.map((item, j) => (
-                  <li key={j}>{inline(item)}</li>
+                  <li key={j}>
+                    {inline(item.text)}
+                    {item.sub.length > 0 && (
+                      <ul>
+                        {item.sub.map((sub, n) => (
+                          <li key={n}>{inline(sub)}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
                 ))}
               </ul>
             )

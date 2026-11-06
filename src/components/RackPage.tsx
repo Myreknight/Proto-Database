@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Update } from '../App'
 import { parseRu } from '../csv'
 import { rackDrawing } from '../drawing'
-import { gearLabel, gearModelOf, gearRu, newGear, patchReport, rackGear, rackRu } from '../gear'
+import { gearLabel, gearRu, newGear, patchReport, rackGear, rackRu } from '../gear'
 import { rackFlow } from '../flow'
 import { downloadRackDxf, downloadRackPdf, downloadRackSvg, type RackView } from '../rackExport'
 import {
@@ -27,11 +27,11 @@ import {
   visibleTails,
 } from '../show'
 import { loadViewSetting, storeViewSetting } from '../sorting'
-import type { PatchTarget } from '../patching'
+import { steckEnds } from '../patching'
+import { isSteck, newSteckGear, steckSummary } from '../stecks'
 import type { Rack, RackSide, RackSlot, Show } from '../types'
 import { GearPickerDialog } from './GearPickerDialog'
-import { PortMap } from './PortMap'
-import { PortPicker } from './PortPicker'
+import { SteckRail } from './SteckRail'
 import { RackDrawing } from './RackDrawing'
 
 interface Props {
@@ -48,21 +48,21 @@ const VIEW_KEY = 'proto-database:rack-page-view'
 
 export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear }: Props) {
   const [picking, setPicking] = useState(false)
-  const [patching, setPatching] = useState<PatchTarget | null>(null)
   const [view, setView] = useState<RackView>(() => loadViewSetting(VIEW_KEY, { view: 'elevation' as RackView }).view)
   useEffect(() => storeViewSetting(VIEW_KEY, { view }), [view])
   const flow = useMemo(() => (view === 'flow' ? rackFlow(show, rack) : null), [view, show, rack])
   const cables = rackCables(show, rack.id)
   const others = show.cables.filter((c) => !cables.includes(c))
   const gear = rackGear(show, rack.id)
-  const otherGear = show.gear.filter((g) => g.rackId !== rack.id)
+  const otherGear = show.gear.filter((g) => g.rackId !== rack.id && !isSteck(g))
   const used = rackRu(show, rack.id)
   const placed = placedIn(show, rack.id)
   const problems = rackProblems(show, rack)
   const over = rack.size != null && placed.some((p) => topOf(p) > rack.size!)
-  // This rack's steck rails, slot by slot, with what's on each slot's inside and outside.
-  const steckRails = gear.filter((g) => gearModelOf(show, g)?.steck)
+  // This rack's steck rails, and how many cable ends marked Steck aren't on any rail yet.
+  const stecks = gear.filter(isSteck)
   const report = useMemo(() => patchReport(show), [show])
+  const waiting = steckEnds(show, report).filter((e) => !e.on).length
   // Listed top to bottom by where they sit; gear with no spot yet comes last.
   const listed = [...gear].sort((a, b) => {
     const pa = placed.find((p) => p.gear.id === a.id)
@@ -87,6 +87,24 @@ export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear 
     update((s) => ({ ...s, gear: [...s.gear, unit] }))
     onOpenGear(unit.id)
   }
+
+  // Goes to a steck rail on this page, ready to name.
+  const showSteck = (id: string) =>
+    window.requestAnimationFrame(() => {
+      const editor = document.getElementById(`steck-${id}`)
+      editor?.scrollIntoView({ block: 'nearest' })
+      editor?.querySelector<HTMLInputElement>('.sb-name')?.focus()
+    })
+
+  // A new steck rail goes in at the top of the rack's free space.
+  const addSteck = () => {
+    const steck = newSteckGear(show, rack.id)
+    update((s) => placeGear({ ...s, gear: [...s.gear, steck] }, steck.id))
+    showSteck(steck.id)
+  }
+
+  // Clicking a unit opens it in Gear; clicking a steck rail goes to it here.
+  const openItem = (id: string) => (show.gear.find((g) => g.id === id)?.steck ? showSteck(id) : onOpenGear(id))
 
   const remove = () => {
     if (!confirm(rackDeleteMessage(show, rack))) return
@@ -178,7 +196,7 @@ export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear 
             flow ? (
               <>
                 <div className="flow-scroll">
-                  <RackDrawing drawing={flow} label={`${rack.name} flow`} onOpenGear={onOpenGear} scale={20} />
+                  <RackDrawing drawing={flow} label={`${rack.name} flow`} onOpenGear={openItem} scale={20} />
                 </div>
                 <p className="muted small">
                   How cables run in and out of the rack: between its gear, to its steck slots, and out to each bundle's
@@ -195,7 +213,7 @@ export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear 
             <RackDrawing
               drawing={rackDrawing(show, rack)}
               label={`${rack.name} front and rear`}
-              onOpenGear={onOpenGear}
+              onOpenGear={openItem}
               onMove={(id, spot) => update((s) => setRackPosition(s, id, spot))}
               checkDrop={(id, spot) => rackProblems(setRackPosition(show, id, spot), rack).get(id) ?? null}
             />
@@ -212,7 +230,7 @@ export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear 
 
         <div className="rack-contents">
           <h3>
-            Gear <span className="muted">({gear.reduce((n, g) => n + g.qty, 0)})</span>
+            In this rack <span className="muted">({gear.reduce((n, g) => n + g.qty, 0)})</span>
           </h3>
           {gear.length === 0 ? (
             <p className="muted small">No gear in this rack yet.</p>
@@ -223,12 +241,14 @@ export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear 
                 const ru = gearRu(show, g)
                 const half = isHalfWidth(show, g)
                 const problem = problems.get(g.id)
-                const detail = [
-                  g.name.trim() ? [g.manufacturer, g.model].map((v) => v.trim()).filter(Boolean).join(' ') : '',
-                  ru ? `${ru * g.qty}U${half ? ' half' : ''}` : '',
-                ]
-                  .filter(Boolean)
-                  .join(' · ')
+                const detail = g.steck
+                  ? steckSummary(g.steck)
+                  : [
+                      g.name.trim() ? [g.manufacturer, g.model].map((v) => v.trim()).filter(Boolean).join(' ') : '',
+                      ru ? `${ru * g.qty}U${half ? ' half' : ''}` : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
                 const label = `${gearLabel(g)}${g.qty > 1 ? ` ×${g.qty}` : ''}`
                 const move = (changes: Parameters<typeof setRackPosition>[2]) =>
                   update((s) => setRackPosition(s, g.id, changes))
@@ -237,7 +257,11 @@ export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear 
                     <div className="ru-head">
                       <span className="ru-pos">{p ? (p.height > 1 ? `U${topOf(p)}–${p.bottom}` : `U${p.bottom}`) : '—'}</span>
                       <span className="link-name">
-                        <button className="link" onClick={() => onOpenGear(g.id)} title="Open in Gear">
+                        <button
+                          className="link"
+                          onClick={() => openItem(g.id)}
+                          title={g.steck ? 'Go to this steck' : 'Open in Gear'}
+                        >
                           {label}
                         </button>
                         {detail && <span className="muted small"> · {detail}</span>}
@@ -326,6 +350,7 @@ export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear 
               Add gear…
             </button>
             <button onClick={addNewGear}>+ New gear</button>
+            <button onClick={addSteck}>+ Add steck rail</button>
           </div>
           {picking && (
             <GearPickerDialog
@@ -340,38 +365,21 @@ export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear 
             />
           )}
 
-          <h3>
-            Steck rails <span className="muted">({steckRails.length})</span>
-          </h3>
-          {steckRails.length === 0 ? (
-            <p className="muted small">
-              Tails (and etherCONs, opticalCONs…) mount on steck rails. Add a steck rail (a model marked Steck in Gear →
-              Models) to this rack.
-            </p>
-          ) : (
-            <>
-              <p className="muted small">
-                Each slot has an inside, where interconnects from this rack's gear plug in, and an outside, where cables
-                run out to the rest of the world. Click either side to patch it.
-              </p>
-              {steckRails.map((rail) => (
-                <div key={rail.id} className="rack-steck">
-                  <h4>
-                    <button className="link" onClick={() => onOpenGear(rail.id)} title="Open in Gear">
-                      {gearLabel(rail)}
-                    </button>
-                  </h4>
-                  <PortMap
-                    show={show}
-                    gear={rail}
-                    points={report.byGear.get(rail.id) ?? []}
-                    onPick={setPatching}
-                    onOpenCable={onOpenCable}
-                  />
-                </div>
-              ))}
-            </>
-          )}
+          <div className="section-head">
+            <h3>
+              Steck rails <span className="muted">({stecks.length})</span>
+            </h3>
+            <button onClick={addSteck}>+ Add steck rail</button>
+          </div>
+          <p className="muted small">
+            {stecks.length === 0
+              ? "Steck rails are where this rack's cables meet the ones that run out to the rest of the world. Add a rail, give it a size, and place cable ends marked Steck in its four quarters."
+              : 'Place cable ends marked Steck in each quarter. A tail fills a quarter; connectors share one, two per rack unit of rail (an NL8 takes two spaces).'}
+            {waiting > 0 && ` ${waiting} end${waiting === 1 ? ' is' : 's are'} marked Steck and not on a rail yet.`}
+          </p>
+          {stecks.map((steck) => (
+            <SteckRail key={steck.id} show={show} steck={steck} report={report} update={update} onOpenCable={onOpenCable} />
+          ))}
 
           <h3>
             Interconnects <span className="muted">({cables.length})</span>
@@ -446,16 +454,6 @@ export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear 
         </div>
       </div>
 
-      {patching && (
-        <PortPicker
-          show={show}
-          report={report}
-          target={patching}
-          update={update}
-          onClose={() => setPatching(null)}
-          onOpenCable={onOpenCable}
-        />
-      )}
     </section>
   )
 }

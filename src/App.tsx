@@ -217,7 +217,13 @@ export default function App() {
     setTab('racks')
   }
 
+  // A steck isn't on the Gear tab, so opening one goes to its rack.
   const openGear = (id: string) => {
+    const steck = show.gear.find((g) => g.id === id && g.steck)
+    if (steck?.rackId) {
+      openRack(steck.rackId)
+      return
+    }
     setSelectedGearId(id)
     setTab('gear')
   }
@@ -232,11 +238,17 @@ export default function App() {
       flags: bundleIssues,
       flagTitle: `${bundleIssues} bundle warning(s): lengths that don't match, or ends flagged opposite the rest`,
     },
-    { id: 'racks', label: 'Racks', count: show.racks.length },
+    {
+      id: 'racks',
+      label: 'Racks',
+      count: show.racks.length,
+      flags: patches.steckIssues,
+      flagTitle: `${patches.steckIssues} steck warning(s): a quarter that's over, or a tail too big for its rail`,
+    },
     {
       id: 'gear',
       label: 'Gear',
-      count: show.gear.length,
+      count: show.gear.filter((g) => !g.steck).length,
       flags: patches.issues,
       flagTitle: `${patches.issues} patch warning(s): ports a model doesn't list, or two cables on one port`,
     },
