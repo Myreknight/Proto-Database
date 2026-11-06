@@ -405,11 +405,14 @@ export default function App() {
           <option key={l} value={l} />
         ))}
       </datalist>
-      <datalist id="steck-slots">
-        {patches.freeSteckSlots.map((n) => (
-          <option key={n} value={n} />
-        ))}
-      </datalist>
+      {/* Steck slots with room on the side a cable end would take (see steckFaces). */}
+      {(['whole', 'inside', 'outside'] as const).map((face) => (
+        <datalist key={face} id={face === 'whole' ? 'steck-slots' : `steck-slots-${face}`}>
+          {patches.freeSteckSlots[face].map((n) => (
+            <option key={n} value={n} />
+          ))}
+        </datalist>
+      ))}
       <datalist id="patch-points">
         {[...gearNames(show), ...patches.freePorts].map((n) => (
           <option key={n} value={n} />

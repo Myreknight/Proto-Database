@@ -27,8 +27,11 @@ import {
   visibleTails,
 } from '../show'
 import { loadViewSetting, storeViewSetting } from '../sorting'
+import type { PatchTarget } from '../patching'
 import type { Rack, RackSide, RackSlot, Show } from '../types'
 import { GearPickerDialog } from './GearPickerDialog'
+import { PortMap } from './PortMap'
+import { PortPicker } from './PortPicker'
 import { RackDrawing } from './RackDrawing'
 
 interface Props {
@@ -45,6 +48,7 @@ const VIEW_KEY = 'proto-database:rack-page-view'
 
 export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear }: Props) {
   const [picking, setPicking] = useState(false)
+  const [patching, setPatching] = useState<PatchTarget | null>(null)
   const [view, setView] = useState<RackView>(() => loadViewSetting(VIEW_KEY, { view: 'elevation' as RackView }).view)
   useEffect(() => storeViewSetting(VIEW_KEY, { view }), [view])
   const flow = useMemo(() => (view === 'flow' ? rackFlow(show, rack) : null), [view, show, rack])
@@ -56,12 +60,9 @@ export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear 
   const placed = placedIn(show, rack.id)
   const problems = rackProblems(show, rack)
   const over = rack.size != null && placed.some((p) => topOf(p) > rack.size!)
-  // Cable ends mounted on this rack's steck rails (tails' G-blocks, etherCONs…), slot by slot.
+  // This rack's steck rails, slot by slot, with what's on each slot's inside and outside.
   const steckRails = gear.filter((g) => gearModelOf(show, g)?.steck)
-  const report = steckRails.length ? patchReport(show) : null
-  const tails = steckRails.flatMap((rail) =>
-    (report?.byGear.get(rail.id) ?? []).filter((p) => p.field.startsWith('steck')).map((point) => ({ rail, point })),
-  )
+  const report = useMemo(() => patchReport(show), [show])
   // Listed top to bottom by where they sit; gear with no spot yet comes last.
   const listed = [...gear].sort((a, b) => {
     const pa = placed.find((p) => p.gear.id === a.id)
@@ -340,30 +341,36 @@ export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear 
           )}
 
           <h3>
-            On steck rails <span className="muted">({tails.length})</span>
+            Steck rails <span className="muted">({steckRails.length})</span>
           </h3>
-          {tails.length === 0 ? (
+          {steckRails.length === 0 ? (
             <p className="muted small">
-              {steckRails.length
-                ? "Nothing mounted yet. On a cable, check Steck for an end and pick a slot on one of this rack's steck rails."
-                : 'Tails (and etherCONs, opticalCONs…) mount on steck rails. Add a steck rail (a model marked Steck in Gear → Models) to this rack.'}
+              Tails (and etherCONs, opticalCONs…) mount on steck rails. Add a steck rail (a model marked Steck in Gear →
+              Models) to this rack.
             </p>
           ) : (
-            <ul className="gear-connections">
-              {tails.map(({ rail, point }) => (
-                <li key={`${point.cable.id}-${point.field}`}>
-                  <button className="link" onClick={() => onOpenCable(point.cable.id)} title="Open in Cables">
-                    {point.cable.color && <span className="dot" style={{ background: point.cable.color }} />}
-                    {point.cable.name || 'Unnamed'}
-                  </button>
-                  <span className="muted small">{point.place.replace(' steck', '')}</span>
-                  <span className="small">
-                    {rail.name.trim() || 'Steck rail'} · {point.port ?? '?'}
-                  </span>
-                  {point.issue && <span className="warn small">⚠ {point.issue}</span>}
-                </li>
+            <>
+              <p className="muted small">
+                Each slot has an inside, where interconnects from this rack's gear plug in, and an outside, where cables
+                run out to the rest of the world. Click either side to patch it.
+              </p>
+              {steckRails.map((rail) => (
+                <div key={rail.id} className="rack-steck">
+                  <h4>
+                    <button className="link" onClick={() => onOpenGear(rail.id)} title="Open in Gear">
+                      {gearLabel(rail)}
+                    </button>
+                  </h4>
+                  <PortMap
+                    show={show}
+                    gear={rail}
+                    points={report.byGear.get(rail.id) ?? []}
+                    onPick={setPatching}
+                    onOpenCable={onOpenCable}
+                  />
+                </div>
               ))}
-            </ul>
+            </>
           )}
 
           <h3>
@@ -438,6 +445,17 @@ export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear 
           </label>
         </div>
       </div>
+
+      {patching && (
+        <PortPicker
+          show={show}
+          report={report}
+          target={patching}
+          update={update}
+          onClose={() => setPatching(null)}
+          onOpenCable={onOpenCable}
+        />
+      )}
     </section>
   )
 }

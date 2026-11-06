@@ -12,18 +12,23 @@ import {
   setModelField,
   setModelPorts,
   type PatchPoint,
+  type PatchReport,
 } from '../gear'
+import type { PatchTarget } from '../patching'
 import { parseRu } from '../csv'
 import { portKey } from '../ports'
 import { placedIn, placeUnplaced, setGearRack, topOf } from '../racking'
 import { ensureRack, rackById } from '../show'
 import type { Gear, Show } from '../types'
+import { PointLink, PortMap } from './PortMap'
+import { PortPicker } from './PortPicker'
 import { PromptDialog } from './PromptDialog'
 
 interface Props {
   show: Show
   gear: Gear
   points: PatchPoint[]
+  report: PatchReport
   update: Update
   onClose: () => void
   onOpenCable: (id: string) => void
@@ -32,21 +37,9 @@ interface Props {
 
 const NEW_RACK = '__new-rack__'
 
-// One cable end or patch cell landing here, opening its cable.
-function PointLink({ point, onOpenCable }: { point: PatchPoint; onOpenCable: (id: string) => void }) {
-  return (
-    <span className="point">
-      <button className="link" onClick={() => onOpenCable(point.cable.id)} title="Open in Cables">
-        {point.cable.color && <span className="dot" style={{ background: point.cable.color }} />}
-        {point.cable.name || 'Unnamed'}
-      </button>
-      <span className="muted small"> {point.place}</span>
-    </span>
-  )
-}
-
-export function GearPane({ show, gear, points, update, onClose, onOpenCable, onOpenRack }: Props) {
+export function GearPane({ show, gear, points, report, update, onClose, onOpenCable, onOpenRack }: Props) {
   const [askingRack, setAskingRack] = useState(false)
+  const [patching, setPatching] = useState<PatchTarget | null>(null)
   const [copying, setCopying] = useState(false)
   // The name when the field was focused, so links can follow a rename once typing is done.
   const nameAtFocus = useRef<string | null>(null)
@@ -340,21 +333,12 @@ export function GearPane({ show, gear, points, update, onClose, onOpenCable, onO
             <h3>
               Ports <span className="muted">({used} of {ports.length} used)</span>
             </h3>
-            <ul className="port-map">
-              {ports.map((port) => {
-                const here = onPort.get(portKey(port)) ?? []
-                return (
-                  <li key={port} className={here.length > 1 ? 'clash' : here.length ? undefined : 'free'}>
-                    <span className="port-name">{port}</span>
-                    <span className="port-use">
-                      {here.length === 0
-                        ? '—'
-                        : here.map((p, i) => <PointLink key={`${p.cable.id}-${p.field}-${i}`} point={p} onOpenCable={onOpenCable} />)}
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
+            <p className="muted small">
+              {steck
+                ? 'Click a slot’s inside to patch an interconnect, or its outside for a cable from the rest of the world.'
+                : 'Click a port (or Enter on it) to patch an interconnect to it.'}
+            </p>
+            <PortMap show={show} gear={gear} points={points} onPick={setPatching} onOpenCable={onOpenCable} />
             {offList.length > 0 && (
               <>
                 <h4 className="port-off-head">Not on a listed port</h4>
@@ -442,6 +426,17 @@ export function GearPane({ show, gear, points, update, onClose, onOpenCable, onO
             if (count >= 1) update((s) => copyGear(s, gear.id, count))
             setCopying(false)
           }}
+        />
+      )}
+
+      {patching && (
+        <PortPicker
+          show={show}
+          report={report}
+          target={patching}
+          update={update}
+          onClose={() => setPatching(null)}
+          onOpenCable={onOpenCable}
         />
       )}
     </aside>

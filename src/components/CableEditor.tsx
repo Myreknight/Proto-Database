@@ -16,6 +16,7 @@ import {
   setCableColor,
   unlinkCable,
   setTailCells,
+  steckMount,
   type TailField,
   tailOptions,
   typeById,
@@ -625,7 +626,15 @@ export function CableEditor({ show, cable, update, onClose, onSelect, onOpenGear
                 {cable[key] && (
                   <>
                     <input
-                      list="steck-slots"
+                      // A tail fills a whole slot; an interconnect takes its inside, any
+                      // other cable its outside.
+                      list={
+                        steckMount(show, cable, end).tail
+                          ? 'steck-slots'
+                          : cable.deployment === 'interconnect'
+                            ? 'steck-slots-inside'
+                            : 'steck-slots-outside'
+                      }
                       className={pointClass(point) || undefined}
                       title={pointTitle(point)}
                       value={cable[atKey]}

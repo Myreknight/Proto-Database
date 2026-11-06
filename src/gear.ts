@@ -288,8 +288,25 @@ export interface PatchReport {
   issues: number
   // "Switch 1 · 3" for every listed port nothing is patched to yet (steck rails aside).
   freePorts: string[]
-  // "SR 1 · 3" for every empty slot on a steck rail.
-  freeSteckSlots: string[]
+  // "SR 1 · 3" for steck rail slots with room: empty on the inside (for interconnects), on
+  // the outside (for cables from the rest of the world), or empty on both (for a tail).
+  freeSteckSlots: Record<SteckFace | 'whole', string[]>
+}
+
+// A steck slot has two sides: inside the rack, where interconnects and a tail's pairs plug
+// in, and outside, where cables run out to the rest of the world.
+export type SteckFace = 'inside' | 'outside'
+
+// Which side of a steck slot something is on, going by what it is: an interconnect or a
+// tail's pair is inside, any other cable is outside, and a tail mounted in the slot fills
+// both (its fan inside, its trunk outside).
+export function steckFaces(show: Show, p: PatchPoint): SteckFace[] {
+  if (p.field === 'steckA' || p.field === 'steckB') {
+    if (steckMount(show, p.cable, p.field === 'steckA' ? 'A' : 'B').tail) return ['inside', 'outside']
+  } else if (p.field.startsWith('patch')) {
+    return ['inside']
+  }
+  return [p.cable.deployment === 'interconnect' ? 'inside' : 'outside']
 }
 
 export const fieldKey = (cableId: string, field: string) => `${cableId}|${field}`
@@ -377,13 +394,21 @@ export function patchReport(show: Show): PatchReport {
   }
 
   const freePorts: string[] = []
-  const freeSteckSlots: string[] = []
+  const freeSteckSlots: PatchReport['freeSteckSlots'] = { inside: [], outside: [], whole: [] }
   for (const g of show.gear) {
     const name = g.name.trim()
     if (!name) continue
     const steck = gearModelOf(show, g)?.steck ?? false
     for (const port of portsOf(g)) {
-      if (!onPort.has(`${g.id}|${portKey(port)}`)) (steck ? freeSteckSlots : freePorts).push(`${name} · ${port}`)
+      const here = onPort.get(`${g.id}|${portKey(port)}`) ?? []
+      if (!steck) {
+        if (!here.length) freePorts.push(`${name} · ${port}`)
+        continue
+      }
+      const taken = new Set(here.flatMap((p) => steckFaces(show, p)))
+      if (!taken.has('inside')) freeSteckSlots.inside.push(`${name} · ${port}`)
+      if (!taken.has('outside')) freeSteckSlots.outside.push(`${name} · ${port}`)
+      if (!taken.size) freeSteckSlots.whole.push(`${name} · ${port}`)
     }
   }
 
@@ -398,15 +423,20 @@ function steckConnector(show: Show, p: PatchPoint): string {
 }
 
 // A steck slot holds one G-block (or other multipin), or D-size connectors two per rack
-// unit of rail. Warns on every connector in a slot that's over.
+// unit of rail, counted on each side: an interconnect inside and the cable it meets
+// outside are the same connector. Warns on every connector in a slot that's over.
 function steckSlotIssues(show: Show, list: PatchPoint[]) {
   const ends = list.filter((p, i) => list.findIndex((x) => x.slot === p.slot) === i)
   const room = 2 * (gearRu(show, list[0].gear) ?? 1)
   const slot = `${gearLabel(list[0].gear)} · ${list[0].port}`
   const big = ends.find((p) => fillsSteckSlot(steckConnector(show, p)))
   let issue: string | null = null
-  if (big && ends.length > 1) issue = `${slot}: ${big.cable.name || 'a cable'}'s ${steckConnector(show, big)} takes the whole slot`
-  else if (ends.length > room) issue = `${slot} holds ${room} connectors; ${ends.length} are in it`
+  for (const face of ['inside', 'outside'] as const) {
+    const on = ends.filter((p) => steckFaces(show, p).includes(face))
+    if (big && on.length > 1) issue = `${slot}: ${big.cable.name || 'a cable'}'s ${steckConnector(show, big)} takes the whole slot`
+    else if (on.length > room) issue = `${slot} holds ${room} connectors on its ${face}; ${on.length} are there`
+    if (issue) break
+  }
   if (!issue) return
   for (const p of list) p.issue ??= issue
 }

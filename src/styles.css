@@ -3031,3 +3031,206 @@ button.add-unit {
     overflow: visible !important;
   }
 }
+
+/* Patching from the gear's side: clickable ports and steck slot sides, and the picker */
+
+.port-pick {
+  padding: 1px 4px;
+  margin: -1px -4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.port-pick:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.port-map .slot-faces {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.port-map .slot-face {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.port-map .face-name {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.port-map .slot-face.free .face-name,
+.port-map .slot-face.free .port-use {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.rack-steck h4 {
+  margin: 10px 0 2px;
+}
+
+.port-picker {
+  width: 560px;
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+}
+
+.port-picker .pp-search {
+  width: 100%;
+  margin: 8px 0;
+}
+
+.pp-here {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.pp-here-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.pp-here-row button {
+  margin-left: auto;
+}
+
+.pp-list {
+  overflow-y: auto;
+  min-height: 120px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.pp-list section + section {
+  border-top: 1px solid var(--border);
+}
+
+.pp-list h3 {
+  margin: 0;
+  padding: 8px 10px 4px;
+}
+
+.pp-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 10px;
+}
+
+.pp-row + .pp-row {
+  border-top: 1px solid var(--border);
+}
+
+.pp-cable-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  min-width: 0;
+}
+
+.pp-ends {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.pp-fan {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pp-cells {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 4px;
+}
+
+.pp-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.pp-option-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.pp-option-now {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.pp-option.free .pp-option-now {
+  color: var(--muted);
+}
+
+.pp-option:disabled .pp-option-now {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.pp-search-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+}
+
+.port-picker .pp-search-row .pp-search {
+  flex: 1;
+  width: auto;
+  margin: 0;
+}
+
+.pp-run {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.pp-run input {
+  width: 56px;
+}
+
+.pp-run-hint {
+  margin: -4px 0 8px;
+}

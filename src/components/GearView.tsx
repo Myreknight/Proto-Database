@@ -325,6 +325,7 @@ export function GearView({ show, patches, update, selectedId, onSelect, onOpenCa
           show={show}
           gear={selected}
           points={patches.byGear.get(selected.id) ?? []}
+          report={patches}
           update={update}
           onClose={() => onSelect(null)}
           onOpenCable={onOpenCable}

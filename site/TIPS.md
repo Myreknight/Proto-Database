@@ -70,13 +70,16 @@ Copy a column of cells in Excel, Numbers or Google Sheets, click a tail cell, an
 - **Suggestions list only free ports**, so ports that are already patched drop off the list.
 - **Ports are set once per model**, so every unit of that model gets the same list. Type them as ranges, like `In A-D, Out 1-4, Net Pri`. To keep a range as one port's name (a DB25 marked "In 1-8"), put it in quotes.
 - **Renaming a unit updates the cables linked to it.**
+- **Patch from the gear's side.** In a unit's **Ports** list (on the Gear tab), click a port, or Tab to the list, move with ↑↓ and press Enter. Pick an interconnect and which end; this rack's interconnects come first. It writes the port into that end, so the cable and the gear always agree. If the end is already patched somewhere else, it asks before moving it. An interconnect patched into a rack moves to that rack, and it asks first if it was in a different one.
+- **Tails from the gear's side.** A trunk's tail lives in the rack whose steck rail its end is mounted on, so a trunk with End A on one rack's steck and End B on another's has a tail in each. The picker on a unit lists the tails in its rack pair by pair; tails elsewhere show up when you search. Set **Patch [N] in a row** to patch the pair you pick and the next ones onto this port and the next ones, e.g. #1–#8 onto In 1–In 8 in one go. It asks before moving a pair that's already patched, or doubling up a port.
 - **Gear → Models** is the model library. Add units from a model there, and use **Make copies** on a unit to get Amp 2, Amp 3 and so on.
 
 ## Racks
 
 - **Adding gear to a rack:** in the picker, click one, Shift-click to select a range, or drag down the list to pick several.
 - **In the drawing:** drag a unit to move it. It snaps to rack units. Drop it on the rear view to move it to the rear rails, and half-width gear picks a side. Click a unit to open it, or use ▲▼ in the gear list to nudge it.
-- **Steck rails** are gear models flagged Steck, with 4 slots. A multipin (G-block, Socapex, VEAM) fills a slot, and D-size connectors (etherCON, opticalCON, XLR) fit two to a slot on a 1RU rail, or four on a 2RU rail. Tick **Steck** on a cable end and type its slot, like `SR 1 · 3`.
+- **Steck rails** are gear models flagged Steck, with 4 slots. A multipin (G-block, Socapex, VEAM) fills a slot, and D-size connectors (etherCON, opticalCON, XLR) fit two to a slot on a 1RU rail, or four on a 2RU rail. Tick **Steck** on a cable end and type its slot, like `SR 1 · 3`, or patch it from the rack page.
+- **Each steck slot has two sides.** The **inside** is where interconnects from the rack's gear plug in. The **outside** is where cables run out to the rest of the world. An interconnect inside and the cable it meets outside are the same connector, so they don't count against each other. A tail mounted in a slot fills both sides. On a rack page, each steck rail lists its slots with both sides: click one to patch it.
 - **Each rack page** switches between Elevation and Flow, and exports a PDF (elevation, parts list and flow), SVG or DXF. **Print → Rack Drawings** prints every rack, or makes one PDF of them all.
 
 ## Bundles and linked cables
