@@ -6,7 +6,7 @@ import { gearModelOf, gearRu, modelKey } from './models'
 import { expandPorts, findPort, portKey, portsAfter, textSeries } from './ports'
 import { frontRowsUsed, placeGear, placeUnplaced } from './racking'
 import { ensureRack, rackById, starterModelRows, steckMount, typeById, visibleTails } from './show'
-import { connectorInfo, isSteck, quarterRoom, steckPorts, steckSummary, tailRoom } from './stecks'
+import { connectorInfo, genericIn, isSteck, quarterRoom, steckPorts, steckSummary, tailRoom } from './stecks'
 import type { Cable, Gear, GearCategory, GearModel, Show } from './types'
 
 export { gearMatcher, gearModelOf, gearRu, modelKey, type GearHit }
@@ -406,12 +406,13 @@ export function patchReport(show: Show): PatchReport {
         if (!here.length) freePorts.push(`${name} · ${port}`)
         continue
       }
-      // A tail fills a quarter; connectors share one, side by side.
-      if (here.some((p) => isTailMount(show, p))) continue
-      if (!here.length) freeSteckSlots.whole.push(`${name} · ${port}`)
+      // A tail fills a quarter; connectors share one, side by side, with any generic ones.
+      const generic = genericIn(g.steck!, port)
+      if (generic.whole || here.some((p) => isTailMount(show, p))) continue
+      if (!here.length && !generic.list.length) freeSteckSlots.whole.push(`${name} · ${port}`)
       const room = quarterRoom(g.steck!.ru)
       for (const face of ['inside', 'outside'] as const) {
-        if (sideUse(show, here, face) < room) freeSteckSlots[face].push(`${name} · ${port}`)
+        if (sideUse(show, here, face) + generic.size < room) freeSteckSlots[face].push(`${name} · ${port}`)
       }
     }
   }
@@ -449,8 +450,9 @@ const sideUse = (show: Show, points: PatchPoint[], face: SteckFace) =>
 
 // A steck quarter holds one tail's G-block, which fills it, or panel connectors side by
 // side, two D-size per rack unit of rail on each side (an interconnect inside and the cable
-// it meets outside are the same connector). Warns on a quarter that's over, on something
-// sharing a quarter with a tail, and on a G-block too big for the rail.
+// it meets outside are the same connector), counting generic connectors on both sides.
+// Warns on a quarter that's over, on something sharing a quarter with a G-block, and on a
+// G-block too big for the rail.
 function steckPortIssues(show: Show, list: PatchPoint[]) {
   const rail = list[0].gear
   const ru = rail.steck!.ru
@@ -459,13 +461,15 @@ function steckPortIssues(show: Show, list: PatchPoint[]) {
   const who = (p: PatchPoint) => p.cable.name || 'a cable'
   const tail = ends.find((p) => isTailMount(show, p))
   const type = tail && steckMount(show, tail.cable, pointEnd(tail)).tail
+  const generic = genericIn(rail.steck!, list[0].port ?? '')
   let issue: string | null = null
-  if (tail && ends.length > 1) issue = `${label}: ${who(tail)}'s tail takes the whole quarter`
+  if (tail && (ends.length > 1 || generic.list.length)) issue = `${label}: ${who(tail)}'s tail takes the whole quarter`
+  else if (generic.whole) issue = `${label}: its G-block takes the whole quarter`
   else if (type && type.channels > tailRoom(ru)) {
     issue = `${label}: a ${ru}RU rail takes G-blocks up to ${tailRoom(ru)}pr, and ${type.name} is bigger`
   } else if (!tail) {
     for (const face of ['inside', 'outside'] as const) {
-      const used = sideUse(show, ends, face)
+      const used = sideUse(show, ends, face) + generic.size
       if (used > quarterRoom(ru)) {
         issue = `${label} has room for ${quarterRoom(ru)} connectors on its ${face} on a ${ru}RU rail, and ${used} are there`
         break

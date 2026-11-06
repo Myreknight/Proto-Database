@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react'
 import type { Update } from '../App'
 import { renameGearLinks, steckFaces, type PatchPoint, type PatchReport } from '../gear'
-import { unplacePoint } from '../patching'
+import { steckPartner, unplacePoint } from '../patching'
 import { portKey } from '../ports'
 import { placedIn, placeGear, rackProblems, topOf } from '../racking'
 import { rackById, steckMount } from '../show'
-import { connectorInfo, quarterRoom, setSteckRu, STECK_QUARTERS, STECK_RU } from '../stecks'
+import { connectorInfo, genericIn, quarterRoom, setGeneric, setSteckRu, STECK_QUARTERS, STECK_RU } from '../stecks'
 import type { Gear, Show } from '../types'
 import { PointLink } from './PortMap'
 import { SteckPlacePicker } from './SteckPlacePicker'
@@ -21,8 +21,9 @@ interface Props {
 const endOf = (p: PatchPoint) => (p.field === 'steckA' || p.field === 'from' ? 'A' : 'B')
 
 // One steck rail on the rack page: its name and size, and its four quarters, each filled
-// with the cable ends marked Steck that are placed in it. A tail fills a quarter; panel
-// connectors share one, outside cables and the interconnects they meet inside.
+// with the cable ends marked Steck that are placed in it, and any generic connectors. A
+// tail fills a quarter; panel connectors share one, outside cables and the interconnects
+// they meet inside.
 export function SteckRail({ show, steck, report, update, onOpenCable }: Props) {
   const [placing, setPlacing] = useState<string | null>(null)
   const nameAtFocus = useRef<string | null>(null)
@@ -98,54 +99,93 @@ export function SteckRail({ show, steck, report, update, onOpenCable }: Props) {
       <div className="sb-slots">
         {STECK_QUARTERS.map((quarter) => {
           const here = on(quarter)
+          const generic = genericIn(steck.steck!, quarter)
           const tail = here.find((p) => p.field.startsWith('steck') && steckMount(show, p.cable, endOf(p)).tail)
           const use = (face: 'inside' | 'outside') =>
             here
               .filter((p) => steckFaces(show, p).includes(face))
               .reduce((n, p) => n + connectorInfo(steckMount(show, p.cable, endOf(p)).connector).size, 0)
-          const used = Math.max(use('inside'), use('outside'))
+          const used = Math.max(use('inside'), use('outside')) + generic.size
           const room = quarterRoom(ru)
-          const issue = here.find((p) => p.issue)?.issue
-          // Outside first (what runs out of the rack), then the interconnects inside.
-          const listed = [...here].sort((a, b) => Number(a.cable.deployment === 'interconnect') - Number(b.cable.deployment === 'interconnect'))
+          const full = !!tail || generic.whole
+          // The patch report checks quarters with cables in them; generic ones alone are checked here.
+          const issue =
+            here.find((p) => p.issue)?.issue ??
+            (generic.whole && generic.list.length > 1
+              ? `${name} · ${quarter}: its G-block takes the whole quarter`
+              : used > room
+                ? `${name} · ${quarter} has room for ${room} connectors on a ${ru}RU rail, and ${used} are there`
+                : undefined)
+          // Each cable that runs out of the rack, with the interconnect it meets here under it;
+          // then any interconnects on their own.
+          const outside = here.filter((p) => p.cable.deployment !== 'interconnect')
+          const inside = here.filter((p) => p.cable.deployment === 'interconnect')
+          const partnerOf = (p: PatchPoint) => {
+            const partner = steckPartner(show, p.cable, endOf(p))
+            return partner && inside.find((i) => i.cable.id === partner.cable.id && endOf(i) === partner.end)
+          }
+          const paired = new Set(outside.map(partnerOf).filter(Boolean))
+          const rows: { point: PatchPoint; under?: boolean }[] = [
+            ...outside.flatMap((p) => {
+              const partner = partnerOf(p)
+              return partner ? [{ point: p }, { point: partner, under: true }] : [{ point: p }]
+            }),
+            ...inside.filter((p) => !paired.has(p)).map((point) => ({ point })),
+          ]
+          const empty = !here.length && !generic.list.length
           return (
-            <div key={quarter} className={[here.length ? 'sb-slot' : 'sb-slot empty', issue ? 'clash' : ''].filter(Boolean).join(' ')}>
+            <div key={quarter} className={[empty ? 'sb-slot empty' : 'sb-slot', issue ? 'clash' : ''].filter(Boolean).join(' ')}>
               <div className="sb-slot-head">
                 <span className="sb-num">{quarter}</span>
-                <span className="muted small">{tail ? 'Tail' : here.length ? `${used} of ${room}` : 'Empty'}</span>
+                <span className="muted small">{full ? (tail ? 'Tail' : 'G-block') : empty ? 'Empty' : `${used} of ${room}`}</span>
                 <span className="spacer" />
                 <button
                   className="small"
                   onClick={() => setPlacing(quarter)}
-                  title={`Place a cable end marked Steck in quarter ${quarter}`}
+                  title={`Place a cable end marked Steck, or a generic connector, in quarter ${quarter}`}
                 >
                   Place…
                 </button>
               </div>
-              {listed.length > 0 && (
+              {(rows.length > 0 || generic.list.length > 0) && (
                 <ul className="sb-placed">
-                  {listed.map((p) => {
+                  {rows.map(({ point: p, under }) => {
                     const mount = steckMount(show, p.cable, endOf(p))
-                    const inside = p.cable.deployment === 'interconnect'
+                    const what = mount.tail?.name ?? connectorInfo(mount.connector).label
+                    const kind = p.cable.deployment === 'interconnect' ? 'interconnect · inside' : ''
                     return (
-                      <li key={p.slot}>
+                      <li key={p.slot} className={under ? 'sb-under' : undefined}>
                         <span className="sb-placed-name">
                           <PointLink point={p} onOpenCable={onOpenCable} />
-                          <span className="muted small">
-                            {[mount.tail?.name ?? connectorInfo(mount.connector).label, inside ? 'inside' : ''].filter(Boolean).join(' · ')}
-                          </span>
+                          <span className="muted small">{[what, kind].filter(Boolean).join(' · ')}</span>
                         </span>
                         <button
                           className="icon"
                           onClick={() => update((s) => unplacePoint(s, p))}
                           title="Take it off the rail (it stays marked Steck)"
-                          aria-label={`Take ${p.cable.name || 'cable'} off ${name} · ${quarter}`}
+                          aria-label={`Take ${p.cable.name || 'cable'} End ${endOf(p)} off ${name} · ${quarter}`}
                         >
                           ×
                         </button>
                       </li>
                     )
                   })}
+                  {generic.list.map((c, i) => (
+                    <li key={`generic-${i}`}>
+                      <span className="sb-placed-name">
+                        <span>{c}</span>
+                        <span className="muted small">generic, no cable yet</span>
+                      </span>
+                      <button
+                        className="icon"
+                        onClick={() => update((s) => setGeneric(s, steck.id, quarter, (list) => list.filter((_, k) => k !== i)))}
+                        title="Take this connector out"
+                        aria-label={`Take the ${c} out of ${name} · ${quarter}`}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
                 </ul>
               )}
               {issue && <p className="warn small sb-issue">⚠ {issue}</p>}

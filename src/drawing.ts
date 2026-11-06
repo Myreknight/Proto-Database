@@ -2,7 +2,7 @@ import { patchReport, steckFaces, type PatchPoint } from './gear'
 import { portKey } from './ports'
 import { INCHES_PER_U, placedIn, rackProblems, topOf } from './racking'
 import { steckMount } from './show'
-import { connectorInfo, STECK_QUARTERS } from './stecks'
+import { connectorInfo, genericIn, STECK_QUARTERS } from './stecks'
 import type { Gear, Rack, RackSide, Show } from './types'
 
 // A rack drawing laid out in real inches (1U = 1.75 in, 19 in wide), so the same layout
@@ -217,7 +217,8 @@ export function rackDrawing(show: Show, rack: Rack, opts: { views?: RackSide[]; 
 
 // A steck rail seen from its face: its four quarters, with the tail's cable name across a
 // quarter a tail fills, or each connector's cable side by side (the cable outside the
-// rail, else the interconnect inside). An empty quarter is left blank.
+// rail, else the interconnect inside), then any generic connectors by what they are. An
+// empty quarter is left blank.
 function drawSteck(
   boxes: DrawBox[],
   texts: DrawText[],
@@ -248,17 +249,25 @@ function drawSteck(
     const outside = here.filter((pt) => steckFaces(show, pt).includes('outside'))
     const inside = here.filter((pt) => steckFaces(show, pt).includes('inside'))
     const shown = tail ? [tail] : outside.length >= inside.length ? outside : inside
-    if (!shown.length) {
+    const generic = genericIn(gear.steck!, quarter).list
+    const cells: (PatchPoint | string)[] = [...shown, ...generic]
+    if (!cells.length) {
       boxes.push({ x: cx + 0.08, y: area.y + 0.2, w: cellW - 0.16, h: area.h - 0.4, kind: 'slot', gearId: gear.id, problem, drag })
       return
     }
-    const subW = cellW / shown.length
-    shown.forEach((pt, k) => {
+    const subW = cellW / cells.length
+    cells.forEach((pt, k) => {
       const sx = cx + k * subW
       boxes.push({ x: sx + 0.08, y: area.y + 0.2, w: subW - 0.16, h: area.h - 0.4, kind: 'slot', gearId: gear.id, problem, drag })
       const size = Math.min(0.6, area.h * 0.28, subW * 0.17)
       const room = subW - 0.35
       const cy = area.y + area.h / 2
+      // A generic connector, with no cable on it: just what it is.
+      if (typeof pt === 'string') {
+        const short = connectorInfo(pt).short
+        texts.push({ x: sx + subW / 2, y: cy + size * 0.45, size: size * 0.8, text: fit(short, room, size * 0.8), anchor: 'middle', muted: true })
+        return
+      }
       const name = pt.cable.name.trim() || 'Unnamed'
       // A name too long for the cell wraps onto two lines ("CPU/Amp" over "1a.1").
       const lines = textWidth(name, size) > room ? wrapTwo(name) : [name]

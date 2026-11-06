@@ -178,14 +178,14 @@ export function steckPartner(show: Show, cable: Cable, end: End): { cable: Cable
   return { cable: other, end: end === 'A' ? 'B' : 'A' }
 }
 
-// Places a cable end in a steck rail's quarter (marking it Steck if it isn't), along with
-// the end it meets there (steckPartner) unless that's already placed somewhere else. An
-// interconnect placed on a racked rail belongs to that rack.
-export function placeEnd(show: Show, cableId: string, end: End, rail: Gear, quarter: string): Show {
+// Places a cable end in a steck rail's quarter (marking it Steck if it isn't), and, unless
+// told not to, the end it meets there (steckPartner) too, when that isn't already placed
+// somewhere else. An interconnect placed on a racked rail belongs to that rack.
+export function placeEnd(show: Show, cableId: string, end: End, rail: Gear, quarter: string, withPartner = true): Show {
   const text = `${rail.name.trim()} · ${quarter}`
   const cable = show.cables.find((c) => c.id === cableId)
   if (!cable) return show
-  const partner = steckPartner(show, cable, end)
+  const partner = withPartner ? steckPartner(show, cable, end) : null
   const put = (c: Cable, e: End): Cable => {
     const rackId = c.deployment === 'interconnect' && rail.rackId ? rail.rackId : c.rackId
     return e === 'A' ? { ...c, steckA: true, steckAAt: text, rackId } : { ...c, steckB: true, steckBAt: text, rackId }

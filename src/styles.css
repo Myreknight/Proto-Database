@@ -3306,3 +3306,35 @@ button.add-unit {
 .pp-place {
   padding: 6px 10px;
 }
+
+/* An interconnect under the cable it meets at a steck, and the generic connector menu */
+
+.sb-placed li.sb-under {
+  padding-left: 14px;
+  border-top: none;
+  position: relative;
+}
+
+.sb-placed li.sb-under::before {
+  content: '↳';
+  position: absolute;
+  left: 0;
+  top: 3px;
+  color: var(--muted);
+}
+
+.port-picker > h3 {
+  margin: 10px 0 4px;
+}
+
+.pp-generic {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.pp-generic .pp-option {
+  align-items: center;
+  padding: 5px 8px;
+}

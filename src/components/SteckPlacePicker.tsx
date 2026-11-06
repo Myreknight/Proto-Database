@@ -4,7 +4,8 @@ import type { PatchReport } from '../gear'
 import { placeEnd, steckEnds, steckPartner, type End } from '../patching'
 import { portKey } from '../ports'
 import { bundleById, rackById, steckMount, typeById } from '../show'
-import { connectorInfo } from '../stecks'
+import { loadViewSetting, storeViewSetting } from '../sorting'
+import { connectorInfo, GENERIC_CONNECTORS, genericIn, setGeneric } from '../stecks'
 import type { Cable, Gear, Show } from '../types'
 
 interface Props {
@@ -25,15 +26,22 @@ interface Option {
   here: boolean
 }
 
+// Whether placing an end brings the interconnect it's linked to there, remembered per viewer.
+const PARTNER_KEY = 'proto-database:steck-bring-interconnect'
+
 const sameText = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
 const byName = (a: Option, b: Option) =>
   a.cable.name.localeCompare(b.cable.name, undefined, { numeric: true }) || a.end.localeCompare(b.end)
 
-// Picking which cable end marked Steck goes in a rail's quarter. Ends not on a rail yet
-// come first, this rack's own at the top (its interconnects, and cables whose end is at
-// the rack's location); ends on other rails show up when you search, to move them.
+// Picking what goes in a rail's quarter: a generic connector (stays open, to add a few),
+// or a cable end marked Steck. Ends not on a rail yet come first, this rack's own at the
+// top (its interconnects, and cables whose end is at the rack's location); ends on other
+// rails show up when you search, to move them.
 export function SteckPlacePicker({ show, report, rail, quarter, update, onClose }: Props) {
   const [query, setQuery] = useState('')
+  const [bring, setBring] = useState(() => loadViewSetting(PARTNER_KEY, { bring: true }).bring)
+  useEffect(() => storeViewSetting(PARTNER_KEY, { bring }), [bring])
+  const generic = genericIn(rail.steck!, quarter)
   const label = `${rail.name.trim()} · ${quarter}`
   const rack = rackById(show, rail.rackId)
 
@@ -85,12 +93,12 @@ export function SteckPlacePicker({ show, report, rail, quarter, update, onClose 
     if (o.at && !o.here) {
       if (!confirm(`${o.cable.name || 'This cable'} End ${o.end} is already on ${o.at}. Do you want to move it to ${label}?`)) return
     }
-    update((s) => placeEnd(s, o.cable.id, o.end, rail, quarter))
+    update((s) => placeEnd(s, o.cable.id, o.end, rail, quarter, bring))
     onClose()
   }
 
   const buttons = (from: HTMLElement) => [
-    ...(from.closest('.dialog')?.querySelectorAll<HTMLButtonElement>('.pp-option:not(:disabled)') ?? []),
+    ...(from.closest('.dialog')?.querySelectorAll<HTMLButtonElement>('.pp-list .pp-option:not(:disabled)') ?? []),
   ]
   const onSearchKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown') {
@@ -112,19 +120,27 @@ export function SteckPlacePicker({ show, report, rail, quarter, update, onClose 
     else list[Math.min(next, list.length - 1)].focus()
   }
 
-  // What it is, its bundle, and the interconnect that comes along to the same quarter.
+  // What it is, its bundle, and the linked cable that comes along to the same quarter (a
+  // different cable, often with the same name).
   const detail = (o: Option) => {
     const mount = steckMount(show, o.cable, o.end)
-    const partner = steckPartner(show, o.cable, o.end)
+    const partner = bring ? steckPartner(show, o.cable, o.end) : null
+    const other = partner && (partner.cable.deployment === 'interconnect' ? 'its interconnect' : 'its linked cable')
     return [
       `End ${o.end}`,
       mount.tail?.name ?? connectorInfo(mount.connector).label,
       bundleById(show, o.cable.bundleId)?.name,
-      partner && `with ${partner.cable.name || 'its interconnect'} ${partner.cable.deployment === 'interconnect' ? 'inside' : 'outside'}`,
+      partner && `+ ${other} (End ${partner.end})`,
     ]
       .filter(Boolean)
       .join(' · ')
   }
+
+  // Generic connectors and the cable ends already here, for the line at the top.
+  const inHere = [
+    ...generic.list,
+    ...options.filter((o) => o.here).map((o) => `${o.cable.name || 'Unnamed'} End ${o.end}`),
+  ]
 
   return (
     <div className="dialog-backdrop" onMouseDown={onClose}>
@@ -136,10 +152,28 @@ export function SteckPlacePicker({ show, report, rail, quarter, update, onClose 
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
       >
         <h2>Place in {label}</h2>
-        <p className="muted small">
-          Cable ends marked Steck (in the cable editor, under From and To). A linked interconnect comes along to the same
-          quarter; take it off the rail if it belongs somewhere else.
-        </p>
+        <p className="muted small">In it now: {inHere.length ? inHere.join(', ') : 'nothing yet'}</p>
+
+        <h3>Generic connector</h3>
+        <div className="pp-generic">
+          {GENERIC_CONNECTORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              className="pp-option"
+              onClick={() => update((s) => setGeneric(s, rail.id, quarter, (list) => [...list, c]))}
+              title={`Add a ${c} with no cable on it yet`}
+            >
+              <span className="pp-option-now">{c}</span>
+            </button>
+          ))}
+        </div>
+
+        <h3>Cable ends marked Steck</h3>
+        <label className="check inline small">
+          <input type="checkbox" checked={bring} onChange={(e) => setBring(e.target.checked)} />
+          Bring the interconnect it's linked to along, inside the same quarter
+        </label>
         <div className="pp-search-row">
           <input
             className="pp-search"
@@ -174,7 +208,7 @@ export function SteckPlacePicker({ show, report, rail, quarter, update, onClose 
                           {o.cable.color && <span className="dot" style={{ background: o.cable.color }} />}
                           <strong>{o.cable.name || 'Unnamed'}</strong>
                         </span>
-                        <span className="pp-option-label">{o.here ? 'Here' : o.at ? `On ${o.at}` : detail(o)}</span>
+                        <span className="pp-option-label">{o.here ? `End ${o.end} · here` : o.at ? `End ${o.end} · on ${o.at}` : detail(o)}</span>
                       </button>
                     ))}
                   </div>

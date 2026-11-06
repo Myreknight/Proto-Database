@@ -17,8 +17,10 @@ export const STECK_RU = [1, 2, 3, 4]
 
 // Panel connectors a quarter takes, and how much of it each one uses: a quarter has room
 // for two D-size connectors per rack unit of rail (2 on 1RU, 4 on 2RU); an NL8 chassis is
-// bigger and takes two of those spaces. `match` finds one from a cable's connector name.
-const CONNECTORS: { label: string; short: string; size: number; match: RegExp }[] = [
+// bigger and takes two of those spaces, and a G-block takes the whole quarter (size 0
+// here, `whole` set). `match` finds one from a cable's connector name.
+const CONNECTORS: { label: string; short: string; size: number; whole?: boolean; match: RegExp }[] = [
+  { label: 'G-block', short: 'G-block', size: 0, whole: true, match: /g-?block/i },
   { label: 'NL8', short: 'NL8', size: 2, match: /\bnl8\b/i },
   { label: 'XLR', short: 'XLR', size: 1, match: /xlr/i },
   { label: 'NL4', short: 'NL4', size: 1, match: /\bnl[24]\b|speakon/i },
@@ -30,13 +32,50 @@ const CONNECTORS: { label: string; short: string; size: number; match: RegExp }[
   { label: 'LC fiber', short: 'LC', size: 1, match: /\blc\b/i },
 ]
 
+// Generic connectors that can go in a quarter without a cable, in menu order.
+export const GENERIC_CONNECTORS = [
+  'XLR',
+  'NL4',
+  'NL8',
+  'etherCON',
+  'RG6 (BNC)',
+  'powerCON',
+  'opticalCON DUO',
+  'opticalCON QUAD',
+  'LC fiber',
+  'G-block',
+]
+
 export const isSteck = (g: Gear) => g.steck != null
 
 // What a connector is on a rail, by its name ("etherCON", "XLR3-F"…). Anything not listed
 // counts as one D-size space.
-export function connectorInfo(connector: string): { label: string; short: string; size: number } {
+export function connectorInfo(connector: string): { label: string; short: string; size: number; whole?: boolean } {
   const known = CONNECTORS.find((c) => c.match.test(connector))
   return known ?? { label: connector.trim() || 'Connector', short: connector.trim() || '?', size: 1 }
+}
+
+// The generic connectors in a quarter ("1"–"4"), and the D-size spaces they take.
+export function genericIn(build: SteckBuild, quarter: string): { list: string[]; size: number; whole: boolean } {
+  const list = build.generic[Number(quarter) - 1] ?? []
+  return {
+    list,
+    size: list.reduce((n, c) => n + connectorInfo(c).size, 0),
+    whole: list.some((c) => connectorInfo(c).whole),
+  }
+}
+
+// Adds a generic connector to a quarter, or takes one out (by its place in the quarter).
+export function setGeneric(show: Show, gearId: string, quarter: string, fn: (list: string[]) => string[]): Show {
+  const at = Number(quarter) - 1
+  return {
+    ...show,
+    gear: show.gear.map((g) =>
+      g.id === gearId && g.steck
+        ? { ...g, steck: { ...g.steck, generic: g.steck.generic.map((list, i) => (i === at ? fn(list) : list)) } }
+        : g,
+    ),
+  }
 }
 
 // D-size spaces in one quarter of a rail this tall.
@@ -67,19 +106,28 @@ export function newSteckGear(show: Show, rackId: string): Gear {
     rackSide: 'front',
     rackSlot: null,
     notes: '',
-    steck: { ru: 1 },
+    steck: emptyRail(1),
   }
 }
+
+const emptyRail = (ru: number): SteckBuild => ({ ru, generic: STECK_QUARTERS.map(() => []) })
 
 // Reads a rail from a saved show, or null for a unit of gear.
 export function normalizeSteck(raw: unknown): SteckBuild | null {
   if (!raw || typeof raw !== 'object') return null
-  const ru = (raw as { ru?: unknown }).ru
-  return { ru: typeof ru === 'number' ? Math.max(1, Math.min(8, Math.floor(ru))) : 1 }
+  const r = raw as { ru?: unknown; generic?: unknown }
+  const ru = typeof r.ru === 'number' ? Math.max(1, Math.min(8, Math.floor(r.ru))) : 1
+  const generic = Array.isArray(r.generic) ? r.generic : []
+  return {
+    ru,
+    generic: STECK_QUARTERS.map((_, i) =>
+      Array.isArray(generic[i]) ? generic[i].filter((c: unknown): c is string => typeof c === 'string') : [],
+    ),
+  }
 }
 
 export function setSteckRu(show: Show, gearId: string, ru: number): Show {
-  return { ...show, gear: show.gear.map((g) => (g.id === gearId && g.steck ? { ...g, steck: { ru } } : g)) }
+  return { ...show, gear: show.gear.map((g) => (g.id === gearId && g.steck ? { ...g, steck: { ...g.steck, ru } } : g)) }
 }
 
 // Shows from 0.7.8–0.7.9 had steck rails as gear models flagged Steck; each racked unit of
@@ -100,7 +148,7 @@ export function migrateSteckRails(
   const gearModels = flagged.size ? models.filter((m) => !flagged.has(keyOf(m))) : models
   const railed = gear.map((g) =>
     !g.steck && flagged.has(keyOf(g))
-      ? { ...g, manufacturer: '', model: '', categoryId: null, steck: { ru: Math.max(1, flagged.get(keyOf(g)) ?? 1) } }
+      ? { ...g, manufacturer: '', model: '', categoryId: null, steck: emptyRail(Math.max(1, flagged.get(keyOf(g)) ?? 1)) }
       : g,
   )
 

@@ -136,9 +136,11 @@ export interface Gear {
 export type RackSide = 'front' | 'rear'
 
 // A steck rail: so many rack units tall, with four quarters across it that marked cable
-// ends are placed in (see stecks.ts).
+// ends are placed in (see stecks.ts). A quarter can also hold generic panel connectors
+// with no cable on them yet ("XLR", "etherCON"…), listed by quarter.
 export interface SteckBuild {
   ru: number
+  generic: string[][]
 }
 export type RackSlot = 'left' | 'right'
 
