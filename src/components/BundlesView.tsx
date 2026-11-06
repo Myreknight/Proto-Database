@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Update } from '../App'
 import { newId } from '../ids'
-import { bundleContents, bundleFlags, bundleLengthMismatch } from '../show'
+import { bundleFlags, bundleLengthMismatch, cableContents } from '../show'
 import { loadViewSetting, nextSort, sortItems, storeViewSetting, type SortState, type SortValue } from '../sorting'
 import type { Bundle, Show } from '../types'
 import { BundlePane } from './BundlePane'
@@ -50,7 +50,7 @@ export function BundlesView({ show, update, selectedId, onSelect, onOpenCable, o
       return {
         bundle,
         cables,
-        contents: bundleContents(show, bundle),
+        contents: cableContents(show, cables),
         flagged: cables.filter((c) => bundleLengthMismatch(show, c)).length,
         flags: bundleFlags(show, bundle.id),
       }

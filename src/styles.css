@@ -2750,6 +2750,13 @@ button.add-unit {
   overflow-wrap: anywhere;
 }
 
+.bs-part {
+  margin: 0 0 4pt;
+  font-size: 12pt;
+  font-weight: 600;
+  color: #444;
+}
+
 .bs-route {
   margin: 0 0 12pt;
   font-size: 18pt;

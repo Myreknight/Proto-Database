@@ -83,7 +83,7 @@ Copy a column of cells in Excel, Numbers or Google Sheets, click a tail cell, an
 
 - **Flag one end** of each cable in a bundle so all the same ends land together. A cable flagged at the opposite end gets a warning.
 - **Create extension** copies every cable in a bundle at a length you choose.
-- **Bundle sheets:** **Print → Bundle Sheets** prints one page per bundle to set out on the floor during layout. Each page has the bundle's route, length and flagged end in large type, then every cable with its type, tails, length, flag and prep boxes (ticked from the Checklists tab). Print them all, or use **Print this sheet** for just one.
+- **Bundle sheets:** **Print → Bundle Sheets** prints one page per bundle to set out on the floor during layout. An extension is laid out like a bundle of its own, so each extension gets its own sheet too ("HL Proscenium Ext 1"). Each page has the bundle's route, length and flagged end in large type, then every cable with its type, tails, length, flag and prep boxes (ticked from the Checklists tab). Print them all, or use **Print this sheet** for just one.
 - **Linked cables** (interconnect → steck → bundle → steck → interconnect) share one color. Use **Apply name to linked** to give them all one name.
 
 ## Printing

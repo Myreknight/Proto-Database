@@ -36,11 +36,13 @@ export interface CheckGroup {
 
 // Each piece of a run is pulled, labeled and tested on its own, so extensions get rows too.
 // Keys follow the piece's id, so a duplicated cable or new extension starts unchecked.
+export const pieceKey = (segmentId: string) => `piece:${segmentId}`
+
 function pieceItems(show: Show, cable: Cable): CheckItem[] {
   const type = typeById(show, cable.typeId)
   const route = [cable.from, cable.to].filter(Boolean).join(' → ')
   return cable.segments.map((g, i) => ({
-    key: `piece:${g.id}`,
+    key: pieceKey(g.id),
     cable,
     piece: cable.segments.length > 1 ? (g.extension ? `Ext ${i}` : 'Main') : '',
     type: type?.name ?? 'Missing type',

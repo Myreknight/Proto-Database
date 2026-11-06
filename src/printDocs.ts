@@ -14,7 +14,7 @@ export const PRINT_DOCS: { group: string; docs: { id: PrintDoc; label: string; h
     group: 'Prep',
     docs: [
       { id: 'checklists', label: 'Checklists', hint: 'Pulled, labeled, bundled, tested' },
-      { id: 'bundle-sheets', label: 'Bundle Sheets', hint: 'One page per bundle' },
+      { id: 'bundle-sheets', label: 'Bundle Sheets', hint: 'One page per bundle and extension' },
     ],
   },
   {
