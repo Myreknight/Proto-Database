@@ -2,6 +2,10 @@ import { useState } from 'react'
 import type { Update } from '../App'
 import {
   addExtension,
+  bundleExtensions,
+  extendRestOfBundle,
+  removeBundleExtension,
+  setBundleExtensionLength,
   bundleFlags,
   bundleLengthMismatch,
   describeLength,
@@ -27,6 +31,7 @@ export function BundlePane({ show, bundle, update, onClose, onOpenCable }: Props
   const mismatched = cables.filter((c) => bundleLengthMismatch(show, c)).length
   const totalTails = cables.reduce((n, c) => n + visibleTails(show, c).length, 0)
   const flags = bundleFlags(show, bundle.id)
+  const extensions = bundleExtensions(show, bundle.id)
 
   const setFlag = (cableId: string, end: 'A' | 'B' | null) =>
     update((s) => ({ ...s, cables: s.cables.map((c) => (c.id === cableId ? { ...c, flagEnd: end } : c)) }))
@@ -121,6 +126,50 @@ export function BundlePane({ show, bundle, update, onClose, onOpenCable }: Props
             </button>
           </div>
         </div>
+        {extensions.length > 0 && (
+          <ul className="bundle-exts" aria-label="Extensions">
+            {extensions.map((x) => (
+              <li key={x.index}>
+                <span className="strong">Ext {x.index}</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={x.length ?? ''}
+                  placeholder={x.mixed ? 'mixed' : 'ft'}
+                  aria-label={`Length of extension ${x.index}, in feet`}
+                  title="Sets this extension's length on every cable that has it"
+                  onChange={(e) =>
+                    update((s) =>
+                      setBundleExtensionLength(s, bundle.id, x.index, e.target.value === '' ? null : Math.max(0, Number(e.target.value))),
+                    )
+                  }
+                />
+                <span className="muted small">
+                  ft · on {x.count} of {cables.length}
+                </span>
+                <span className="spacer" />
+                {x.missing > 0 && (
+                  <button className="small" onClick={() => update((s) => extendRestOfBundle(s, bundle.id, x.index))}>
+                    Add to the other {x.missing}
+                  </button>
+                )}
+                <button
+                  className="icon"
+                  title="Remove this extension from every cable in the bundle"
+                  aria-label={`Remove extension ${x.index}`}
+                  onClick={() => {
+                    const len = x.length != null ? ` (${x.length}')` : ''
+                    if (!confirm(`Remove Ext ${x.index}${len} from ${x.count} cable${x.count === 1 ? '' : 's'}? Its checklist ticks go with it.`)) return
+                    update((s) => removeBundleExtension(s, bundle.id, x.index))
+                  }}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
 
         <h3>
           In this bundle{' '}

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { SortState } from '../sorting'
 
 export interface SortColumn<K extends string> {
@@ -10,13 +11,17 @@ export function SortHeaders<K extends string>({
   columns,
   sort,
   onSort,
+  lead,
 }: {
   columns: SortColumn<K>[]
   sort: SortState<K>
   onSort: (key: K) => void
+  // A first header cell before the sortable ones (a select-all box).
+  lead?: ReactNode
 }) {
   return (
     <tr>
+      {lead}
       {columns.map((col) => {
         const active = sort?.key === col.key ? sort : null
         return (

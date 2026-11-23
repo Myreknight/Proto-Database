@@ -1,7 +1,7 @@
 import seedCsv from '../cable_types.csv?raw'
 import seedModelsCsv from '../gear_models.csv?raw'
 import { softenColor } from './colors'
-import { cableTypesFromCsv, gearModelsFromCsv, parseHalfWidth, parseRu, type GearModelRow } from './csv'
+import { cableTypesFromCsv, gearModelsFromCsv, parseHalfWidth, parseNumbering, parseRu, type GearModelRow } from './csv'
 import { newId } from './ids'
 import { gearMatcher } from './match'
 import { placeUnplaced } from './racking'
@@ -17,6 +17,7 @@ import {
   type CableType,
   type Gear,
   type GearCategory,
+  type GearList,
   type GearModel,
   type Part,
   type Rack,
@@ -49,6 +50,9 @@ export function seedGearModels(categories: GearCategory[]): GearModel[] {
     categoryId: categories.find((c) => c.name.trim().toLowerCase() === r.category.toLowerCase())?.id ?? null,
     ru: parseRu(r.ru),
     halfWidth: parseHalfWidth(r.width),
+    slots: r.slots,
+    card: r.card,
+    cardNumbering: parseNumbering(r.numbering),
     ports: r.ports,
     notes: r.notes,
   }))
@@ -68,8 +72,17 @@ function emptyInfo(): ShowInfo {
     },
     logo: null,
     team: { designer: [], associate: [], assistant: [], productionAudio: [], a1: [], a2: [] },
+    hiddenRoles: [],
+    customRoles: [],
+    gearLists: defaultGearLists(),
   }
 }
+
+// The lists a show starts with. Fixed ids, so every copy of a shared show agrees on them.
+export const defaultGearLists = (): GearList[] => [
+  { id: 'main', name: 'Main' },
+  { id: 'production', name: 'Production' },
+]
 
 function normalizeInfo(raw: Partial<ShowInfo> | undefined): ShowInfo {
   const info = emptyInfo()
@@ -85,7 +98,31 @@ function normalizeInfo(raw: Partial<ShowInfo> | undefined): ShowInfo {
     const names = raw.team?.[role.id]
     if (Array.isArray(names)) info.team[role.id] = names.filter((n) => typeof n === 'string')
   }
+  if (Array.isArray(raw.hiddenRoles)) info.hiddenRoles = ROLES.map((r) => r.id).filter((id) => raw.hiddenRoles!.includes(id))
+  if (Array.isArray(raw.customRoles)) {
+    info.customRoles = raw.customRoles
+      .filter((r) => r && typeof r === 'object')
+      .map((r) => ({
+        id: typeof r.id === 'string' ? r.id : newId(),
+        label: typeof r.label === 'string' ? r.label : '',
+        names: Array.isArray(r.names) ? r.names.filter((n) => typeof n === 'string') : [],
+      }))
+  }
+  if (Array.isArray(raw.gearLists)) {
+    const seen = new Set<string>()
+    info.gearLists = raw.gearLists
+      .filter((l) => l && typeof l === 'object' && typeof l.id === 'string' && !seen.has(l.id) && seen.add(l.id))
+      .map((l) => ({ id: l.id, name: typeof l.name === 'string' ? l.name : '' }))
+  }
   return info
+}
+
+// The roles a show credits, in order: the built-in ones it uses, then its own.
+export function teamRoles(info: ShowInfo): { label: string; credit: string; names: string[] }[] {
+  return [
+    ...ROLES.filter((r) => !info.hiddenRoles.includes(r.id)).map((r) => ({ label: r.label, credit: r.credit, names: info.team[r.id] })),
+    ...info.customRoles.map((r) => ({ label: r.label, credit: r.label, names: r.names })),
+  ]
 }
 
 export function newShow(): Show {
@@ -194,6 +231,11 @@ export function normalizeShow(raw: unknown): Show {
     : seedGearCategories()
   const categoryIds = new Set(gearCategories.map((g) => g.id))
   const rackIds = new Set(racks.map((r) => r.id))
+  const info = normalizeInfo(s.info)
+  const listIds = new Set(info.gearLists.map((l) => l.id))
+  // Gear from before lists goes on the first one.
+  const listOf = (raw: unknown): string | null =>
+    raw === undefined ? (info.gearLists[0]?.id ?? null) : typeof raw === 'string' && listIds.has(raw) ? raw : null
   // Shows from 0.7.6–0.7.9 kept each rack's case as a gear entry; the gear list now counts
   // racks by size instead, so those entries go.
   const caseIds = new Set((s.racks ?? []).map((r) => (r as { gearId?: unknown }).gearId).filter((id) => typeof id === 'string'))
@@ -210,7 +252,15 @@ export function normalizeShow(raw: unknown): Show {
     rackSlot: g.rackSlot === 'left' || g.rackSlot === 'right' ? g.rackSlot : null,
     notes: g.notes ?? '',
     steck: normalizeSteck(g.steck),
+    host:
+      g.host && typeof g.host.gearId === 'string' && typeof g.host.slot === 'string'
+        ? { gearId: g.host.gearId, slot: g.host.slot }
+        : null,
+    listId: listOf(g.listId),
   }))
+  // A card whose unit is gone stays on the list as a spare.
+  const gearIds = new Set(gear.map((g) => g.id))
+  for (const g of gear) if (g.host && !gearIds.has(g.host.gearId)) g.host = null
   // Shows from before the model library get the starter one.
   const gearModels: GearModel[] = Array.isArray(s.gearModels)
     ? s.gearModels
@@ -221,6 +271,9 @@ export function normalizeShow(raw: unknown): Show {
           categoryId: m.categoryId && categoryIds.has(m.categoryId) ? m.categoryId : null,
           ru: typeof m.ru === 'number' && m.ru > 0 ? m.ru : null,
           halfWidth: m.halfWidth === true,
+          slots: typeof m.slots === 'string' ? m.slots : '',
+          card: typeof m.card === 'string' ? m.card : '',
+          cardNumbering: m.cardNumbering === 'continue' ? ('continue' as const) : ('slot' as const),
           ports: m.ports ?? '',
           notes: m.notes ?? '',
         }))
@@ -233,7 +286,7 @@ export function normalizeShow(raw: unknown): Show {
     format: 'proto-database-show',
     formatVersion: 1,
     name: s.name ?? 'Untitled Show',
-    info: normalizeInfo(s.info),
+    info,
     cableTypes,
     cables: stecked.cables,
     bundles,
@@ -453,6 +506,82 @@ export function setCableColor(show: Show, cableId: string, color: string | null)
 export function addExtension(cable: Cable, length: number): Cable {
   const ext: Segment = { id: newId(), length, extension: true }
   return { ...cable, segments: [...cable.segments, ext] }
+}
+
+// A bundle's extensions, by place: Ext 1 is each cable's second piece, Ext 2 its third.
+// Their length is the one every cable that has it shares (null when they differ).
+export interface BundleExtension {
+  index: number
+  length: number | null
+  mixed: boolean
+  // How many of the bundle's cables have it, and how many could take it now (they have
+  // every piece before it but not this one).
+  count: number
+  missing: number
+}
+
+export function bundleExtensions(show: Show, bundleId: string): BundleExtension[] {
+  const cables = show.cables.filter((c) => c.bundleId === bundleId)
+  const most = Math.max(0, ...cables.map((c) => c.segments.length - 1))
+  return Array.from({ length: most }, (_, i) => {
+    const index = i + 1
+    const lengths = cables.flatMap((c) => (c.segments[index] ? [c.segments[index].length] : []))
+    const first = lengths[0] ?? null
+    const mixed = lengths.some((l) => l !== first)
+    return {
+      index,
+      length: mixed ? null : first,
+      mixed,
+      count: lengths.length,
+      missing: cables.filter((c) => c.segments.length === index).length,
+    }
+  })
+}
+
+// Changes one extension's length on every cable in a bundle that has it. The bundle's
+// length moves by the same amount when every cable agreed on the old one.
+export function setBundleExtensionLength(show: Show, bundleId: string, index: number, length: number | null): Show {
+  const ext = bundleExtensions(show, bundleId)[index - 1]
+  const delta = ext && !ext.mixed && ext.length != null && length != null ? length - ext.length : null
+  return {
+    ...show,
+    bundles: show.bundles.map((b) => (b.id === bundleId && b.length != null && delta != null ? { ...b, length: b.length + delta } : b)),
+    cables: show.cables.map((c) =>
+      c.bundleId === bundleId && c.segments[index]
+        ? { ...c, segments: c.segments.map((g, i) => (i === index ? { ...g, length } : g)) }
+        : c,
+    ),
+  }
+}
+
+// Takes one extension off every cable in a bundle; the ones after it move up. The bundle
+// gets shorter by its length when every cable agreed on it.
+export function removeBundleExtension(show: Show, bundleId: string, index: number): Show {
+  const ext = bundleExtensions(show, bundleId)[index - 1]
+  const shorter = ext && !ext.mixed && ext.length != null ? ext.length : null
+  return {
+    ...show,
+    bundles: show.bundles.map((b) =>
+      b.id === bundleId && b.length != null && shorter != null ? { ...b, length: Math.max(0, b.length - shorter) } : b,
+    ),
+    cables: show.cables.map((c) =>
+      c.bundleId === bundleId && c.segments[index] ? { ...c, segments: c.segments.filter((_, i) => i !== index) } : c,
+    ),
+  }
+}
+
+// Gives an extension to the bundle's cables that don't have it yet (ones added since).
+export function extendRestOfBundle(show: Show, bundleId: string, index: number): Show {
+  const ext = bundleExtensions(show, bundleId)[index - 1]
+  if (!ext) return show
+  return {
+    ...show,
+    cables: show.cables.map((c) =>
+      c.bundleId === bundleId && c.segments.length === index
+        ? { ...c, segments: [...c.segments, { id: newId(), length: ext.length, extension: true }] }
+        : c,
+    ),
+  }
 }
 
 // Puts a cable in a bundle, filling in anything it doesn't have yet from the bundle.

@@ -106,6 +106,7 @@ export const GEAR_CATEGORY_NAMES = [
   'Comms',
   'Video',
   'Networking',
+  'Cards',
   'Power',
   'Racks',
   'Hardware',
@@ -131,7 +132,19 @@ export interface Gear {
   notes: string
   // Set when this is a steck rail built into a rack rather than a unit of gear (see stecks.ts).
   steck: SteckBuild | null
+  // Set when this is a card in another unit's slot (see cards.ts).
+  host: GearHost | null
+  // Which of the show's gear lists it's on (Main, Production…), or none.
+  listId: string | null
 }
+
+// Which unit a card is in, and which of its slots ("SD In 3", "RY 2").
+export interface GearHost {
+  gearId: string
+  slot: string
+}
+
+export type CardNumbering = 'slot' | 'continue'
 
 export type RackSide = 'front' | 'rear'
 
@@ -156,6 +169,13 @@ export interface GearModel {
   ru: number | null
   // Half the rack's width, so two can sit side by side in the same rack units.
   halfWidth: boolean
+  // Card slots, typed like ports: "SD In 1-7, SD Out 1-7", "RY 1-6, HY 1-2".
+  slots: string
+  // For a card: the kind of slot it fits ("SD In", "RY", "HY"); empty for anything else.
+  card: string
+  // How a card's ports are named in a unit: within its slot ("RY3 In 1"), or counting on
+  // through the slots of its kind (the third SD input card's In 1 is In 17).
+  cardNumbering: CardNumbering
   ports: string
   notes: string
 }
@@ -197,6 +217,25 @@ export interface ShowInfo {
   // Small PNG data URL, so the logo travels inside the show file.
   logo: string | null
   team: Record<RoleId, string[]>
+  // Built-in roles this show doesn't use: hidden in setup and left out of the credits (their
+  // names are kept, in case the role comes back).
+  hiddenRoles: RoleId[]
+  // Roles the show adds, credited by their own name.
+  customRoles: CustomRole[]
+  // The lists gear is split into for paperwork (Main, Production…), in print order. Each
+  // unit is on one of them, or none.
+  gearLists: GearList[]
+}
+
+export interface GearList {
+  id: string
+  name: string
+}
+
+export interface CustomRole {
+  id: string
+  label: string
+  names: string[]
 }
 
 export type CheckStep = 'pulled' | 'labeled' | 'bundled' | 'tested'

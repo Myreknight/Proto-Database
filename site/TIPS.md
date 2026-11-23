@@ -72,6 +72,9 @@ Copy a column of cells in Excel, Numbers or Google Sheets, click a tail cell, an
 - **Renaming a unit updates the cables linked to it.**
 - **Patch from the gear's side.** In a unit's **Ports** list (on the Gear tab), click a port, or Tab to the list, move with ↑↓ and press Enter. Pick an interconnect and which end; this rack's interconnects come first. It writes the port into that end, so the cable and the gear always agree. If the end is already patched somewhere else, it asks before moving it. An interconnect patched into a rack moves to that rack, and it asks first if it was in a different one.
 - **Tails from the gear's side.** A trunk's tail lives in the rack whose steck rail its end is mounted on, so a trunk with End A on one rack's steck and End B on another's has a tail in each. The picker on a unit lists the tails in its rack pair by pair; tails elsewhere show up when you search. Set **Patch [N] in a row** to patch the pair you pick and the next ones onto this port and the next ones, e.g. #1–#8 onto In 1–In 8 in one go. It asks before moving a pair that's already patched, or doubling up a port.
+- **Card slots.** Consoles and I/O racks that take cards list their slots on the model (**Card slots**, like `SD In 1-7, SD Out 1-7` or `RY 1-6, HY 1-2`); a card's model says which kind of slot it fits (**Is a card for**: `SD In`, `RY`, `HY`…). Open a unit and pick a card for each slot (a new one, or a spare); its ports become the unit's ports, so cables patch straight to them. DiGiCo SD cards count on through the slots (the third input card is In 17–24); Yamaha cards are named by slot (`RY3 In 1`). Cards are gear too: they're listed under **Cards** on the gear list, with the unit each is in, so the shop sends them. Make copies of a loaded unit and the copies come loaded.
+- **Gear lists.** Each unit is on one list (a show starts with **Main** and **Production**). Set it with **List** on the unit, next to Category. **Gear → Lists…** renames, reorders, adds and deletes lists. New gear goes on the first list, and so do the racks and steck rails. Group the Gear tab by **List** to see each one.
+- **Change several units at once.** Tick the boxes at the left of the Gear tab: Shift-click ticks a run, and a group's box ticks the whole group. A bar appears at the top. Each field shows what the ticked units share (*Mixed* if they differ). Pick a List, Category or Rack and they all change; type a Manufacturer and press **Enter**. **Fields** adds Model, Qty or a line for the notes to the bar, or takes fields away. One ⌘Z undoes the whole change. **Esc** or **Clear** unticks everything.
 - **Gear → Models** is the model library. Add units from a model there, and use **Make copies** on a unit to get Amp 2, Amp 3 and so on.
 
 ## Racks
@@ -85,12 +88,13 @@ Copy a column of cells in Excel, Numbers or Google Sheets, click a tail cell, an
 - **The interconnect comes along.** Placing a cable end also places the interconnect it's linked to at that steck. Linked cables share a name, so it shows indented under its cable, marked *interconnect · inside*. Untick **Bring the interconnect it's linked to along** in the list to place just the one end (it remembers). Take anything off with ×; it stays marked Steck, ready to place again.
 - **Warnings, never blocks:** a quarter that's over, something sharing a quarter with a tail, or a tail too big for the rail. Moving an end from another rail asks first.
 - **On the gear list**, steck rails are counted by size under Racks (`1RU steck rail · SR 1–3`).
-- **Each rack page** switches between Elevation and Flow, and exports a PDF (elevation, parts list and flow), SVG or DXF. **Print → Rack Drawings** prints every rack, or makes one PDF of them all.
+- **Each rack page** switches between Elevation and Flow, and exports a PDF (elevation, parts list and flow), SVG or DXF. **Print → Rack Drawings** prints every rack, or makes one PDF of them all. Untick **Flow pages** there to leave the flow pages out; the rack page's PDF follows the same setting.
 
 ## Bundles and linked cables
 
 - **Flag one end** of each cable in a bundle so all the same ends land together. A cable flagged at the opposite end gets a warning.
 - **Create extension** copies every cable in a bundle at a length you choose.
+- **A bundle's extensions are listed under it**, one row each. Change **Ext 1**'s length and every cable in it changes. **Add to the other N** extends cables added after the extension was made. **×** removes the extension from the whole bundle, checklist ticks and all (it asks first).
 - **Bundle sheets:** **Print → Bundle Sheets** prints one page per bundle to set out on the floor during layout. An extension is laid out like a bundle of its own, so each extension gets its own sheet too ("HL Proscenium Ext 1"). Each page has the bundle's route, length and flagged end in large type, then every cable with its type, tails, length, flag and prep boxes (ticked from the Checklists tab). Print them all, or use **Print this sheet** for just one.
 - **Linked cables** (interconnect → steck → bundle → steck → interconnect) share one color. Use **Apply name to linked** to give them all one name.
 
@@ -101,6 +105,8 @@ Everything prints from the **Print** tab: Cable List, Labels, Checklists, Bundle
 - Pick a printout on the left (↑ and ↓ work there), set it up, and **Print** is always at the top right. CSV and PDF exports sit beside it.
 - The Bundles, Racks, Gear and Checklists tabs each have a **Print…** button that jumps to their printout, and so does ⌘P.
 - The app remembers the last printout you used.
+- **Gear List** prints all the gear, one list ("Production Gear List"), or **All, by list**: one printout with a section for each. The CSV follows the same choice.
+- **The credits** at the top of each printout come from **Show Setup → Audio team**. Untick a role there to leave it off this show (any names in it are kept, in case you turn it back on), or **+ Add a role** for one of your own, like RF Tech.
 
 ### Labels
 

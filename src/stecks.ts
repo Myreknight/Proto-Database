@@ -107,6 +107,8 @@ export function newSteckGear(show: Show, rackId: string): Gear {
     rackSlot: null,
     notes: '',
     steck: emptyRail(1),
+    host: null,
+    listId: show.info.gearLists[0]?.id ?? null,
   }
 }
 

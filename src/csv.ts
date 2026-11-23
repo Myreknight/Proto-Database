@@ -11,7 +11,7 @@ export const CABLE_TYPE_HEADERS = [
   'Notes',
 ]
 
-export const GEAR_MODEL_HEADERS = ['Manufacturer', 'Model', 'Category', 'RU', 'Width', 'Ports', 'Notes']
+export const GEAR_MODEL_HEADERS = ['Manufacturer', 'Model', 'Category', 'RU', 'Width', 'Slots', 'Card', 'Numbering', 'Ports', 'Notes']
 
 export interface GearModelRow {
   manufacturer: string
@@ -19,6 +19,9 @@ export interface GearModelRow {
   category: string
   ru: string
   width: string
+  slots: string
+  card: string
+  numbering: string
   ports: string
   notes: string
 }
@@ -26,6 +29,11 @@ export interface GearModelRow {
 // "Half", "1/2", "half rack" → half width; anything else is full width.
 export function parseHalfWidth(text: string): boolean {
   return /half|1\/2|½/i.test(text)
+}
+
+// "Count on", "continue", "running" → ports count on through the slots; anything else, per slot.
+export function parseNumbering(text: string): 'slot' | 'continue' {
+  return /count|contin|running|through/i.test(text) ? 'continue' : 'slot'
 }
 
 // "2", "2U", "2 RU" → 2. Blank, zero or anything else is no rack size.
@@ -43,6 +51,9 @@ const MODEL_ALIASES: Record<keyof GearModelRow, string[]> = {
   category: ['category', 'categories', 'department', 'dept', 'section', 'group'],
   ru: RU_HEADERS,
   width: ['width', 'rack width', 'half width', 'half-width'],
+  slots: ['slots', 'card slots', 'slot'],
+  card: ['card', 'card type', 'card for', 'fits slot', 'slot type'],
+  numbering: ['numbering', 'card numbering', 'port numbering'],
   ports: ['ports', 'port list', 'i/o', 'io', 'connections'],
   notes: ['notes', 'note', 'comments', 'comment', 'remarks'],
 }

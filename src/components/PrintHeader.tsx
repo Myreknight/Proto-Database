@@ -1,9 +1,10 @@
-import { ROLES, type Show } from '../types'
+import { teamRoles } from '../show'
+import type { Show } from '../types'
 
 // Top of every printed list: logo, show and venue, what the page is, and the team.
 export function PrintHeader({ show, title, meta }: { show: Show; title: string; meta: string[] }) {
-  const credits = ROLES.map((role) => {
-    const names = show.info.team[role.id].map((n) => n.trim()).filter(Boolean)
+  const credits = teamRoles(show.info).map((role) => {
+    const names = role.names.map((n) => n.trim()).filter(Boolean)
     return names.length ? `${role.credit}: ${names.join(', ')}` : ''
   }).filter(Boolean)
   return (
