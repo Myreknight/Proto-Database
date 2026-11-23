@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { BundlesView } from './components/BundlesView'
 import { CablesView } from './components/CablesView'
 import { CableTypesView } from './components/CableTypesView'
@@ -9,8 +9,15 @@ import { HelpDialog } from './components/HelpDialog'
 import { PrintView } from './components/PrintView'
 import { RacksView } from './components/RacksView'
 import { ShowSetupView } from './components/ShowSetupView'
+import { MembersDialog } from './components/MembersDialog'
 import { MushroomIcon, PixelHud } from './components/PixelDecor'
+import { ShowsDialog } from './components/ShowsDialog'
+import { SignInDialog } from './components/SignInDialog'
 import { AmpDisplay, AmpTitleBar } from './components/WinampDecor'
+import { onSignedOut, signOutAccount, useAccount } from './cloud/account'
+import { firestoreBackend } from './cloud/backend'
+import { cloud, cloudAvailable } from './cloud/firebase'
+import { shareShow } from './cloud/shows'
 import { downloadText, pickTextFile, safeFilename } from './files'
 import { gearNames, patchReport } from './gear'
 import { historyReducer, initHistory, now, typingField } from './history'
@@ -25,6 +32,8 @@ import {
   normalizeShow,
   storeShow,
 } from './show'
+import { diffShows } from './sync/patch'
+import { openSession, type Session, type SyncStatus } from './sync/session'
 import type { Show } from './types'
 
 export type Update = (fn: (show: Show) => Show) => void
@@ -43,6 +52,25 @@ function isTyping(target: EventTarget | null): boolean {
 // Winamp; the mushroom tucked in the bottom-right corner flips 8-bit.
 const SKIN_KEY = 'proto-database:skin'
 type Skin = 'default' | 'winamp' | 'pixel'
+
+// Which show is open: this device's (null), or a shared one by id. Remembered per viewer.
+const OPEN_KEY = 'proto-database:open-show'
+
+function loadOpenShared(): string | null {
+  try {
+    return cloudAvailable() ? localStorage.getItem(OPEN_KEY) : null
+  } catch {
+    return null
+  }
+}
+
+// What the shared chip in the top bar says.
+function syncText(status: SyncStatus | null): string {
+  if (!status || status.state === 'loading') return 'Opening…'
+  if (status.state === 'offline') return 'Offline · changes saved here'
+  if (status.state === 'saving') return 'Saving…'
+  return 'Synced'
+}
 
 function loadSkin(): Skin {
   try {
@@ -64,6 +92,21 @@ export default function App() {
   const [skin, setSkin] = useState<Skin>(loadSkin)
   const [helpOpen, setHelpOpen] = useState(false)
   const [printDoc, setPrintDoc] = useState<PrintDoc>(loadPrintDoc)
+  // Shared shows: who's signed in, which shared show is open (null: this device's), and
+  // how its syncing is going.
+  const account = useAccount()
+  const uid = account.user?.uid
+  const [sharedId, setSharedId] = useState<string | null>(loadOpenShared)
+  // The open shared show's sync status (kept with its id, so a switch never shows the last one's).
+  const [sync, setSync] = useState<{ id: string; status: SyncStatus } | null>(null)
+  const syncStatus = sync && sync.id === sharedId ? sync.status : null
+  const sharedRef = useRef(sharedId)
+  const [showsOpen, setShowsOpen] = useState(false)
+  const [membersOpen, setMembersOpen] = useState(false)
+  const [signingIn, setSigningIn] = useState(false)
+  const sessionRef = useRef<Session | null>(null)
+  // The show as the session last gave it; what's changed since goes up as one change.
+  const baseRef = useRef<Show | null>(null)
   const winamp = skin === 'winamp'
   const pixel = skin === 'pixel'
 
@@ -76,7 +119,18 @@ export default function App() {
     }
   }, [skin])
 
-  useEffect(() => storeShow(show), [show])
+  // This device's show is kept in the browser; a shared one is kept by Firebase.
+  useEffect(() => {
+    if (!sharedId) storeShow(show)
+  }, [show, sharedId])
+  useEffect(() => {
+    try {
+      if (sharedId) localStorage.setItem(OPEN_KEY, sharedId)
+      else localStorage.removeItem(OPEN_KEY)
+    } catch {
+      // Storage blocked: it opens on this device's show next time.
+    }
+  }, [sharedId])
   useEffect(() => storePrintDoc(printDoc), [printDoc])
 
   // The Print tab, opened on a given document or the last one used.
@@ -174,29 +228,113 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [helpOpen])
 
-  const startNewShow = () => {
-    if (
-      !confirm(
-        'Start a new show? This replaces the current show in this browser. Save it first if you want to keep it.',
-      )
-    )
-      return
-    replaceShow(newShow())
+  const clearSelection = () => {
     setSelectedCableId(null)
     setSelectedBundleId(null)
     setSelectedRackId(null)
     setSelectedGearId(null)
   }
 
+  // Back to this device's show (leaving a shared one, or after losing access to it).
+  const openDevice = useCallback((replacement?: Show) => {
+    sessionRef.current?.flush()
+    setSharedId(null)
+    dispatch({ type: 'reset', show: replacement ?? loadStoredShow() })
+    clearSelection()
+  }, [])
+
+  const openShared = (id: string) => {
+    if (id === sharedId) return
+    sessionRef.current?.flush()
+    setSharedId(id)
+    clearSelection()
+  }
+
+  // A shared show stays open while its session runs: it loads, then changes from others
+  // arrive as they happen, and edits here go up (see the push below).
+  useEffect(() => {
+    sharedRef.current = sharedId
+    if (!sharedId || !uid) return
+    baseRef.current = null
+    const session = openSession(firestoreBackend(cloud().db, sharedId), {
+      show: (next, first) => {
+        baseRef.current = next
+        dispatch(first ? { type: 'reset', show: next } : { type: 'remote', show: next })
+      },
+      status: (status) => setSync({ id: sharedId, status }),
+      error: (message) => {
+        alert(message)
+        openDevice()
+      },
+    })
+    sessionRef.current = session
+    return () => {
+      session.close()
+      sessionRef.current = null
+      baseRef.current = null
+    }
+  }, [sharedId, uid, openDevice])
+
+  // Signed out (here, in another tab, or before this visit) with a shared show open: back to
+  // this device's show.
+  useEffect(() => {
+    if (!cloudAvailable()) return
+    return onSignedOut(() => {
+      if (sharedRef.current) openDevice()
+    })
+  }, [openDevice])
+
+  // Edits to a shared show go up as changes, field by field.
+  useEffect(() => {
+    const session = sessionRef.current
+    const base = baseRef.current
+    if (!session || !base || base === show) return
+    session.push(diffShows(base, show))
+    baseRef.current = show
+  }, [show])
+
+  // Anything still waiting goes up before the page closes or hides.
+  useEffect(() => {
+    const flush = () => sessionRef.current?.flush()
+    window.addEventListener('pagehide', flush)
+    document.addEventListener('visibilitychange', flush)
+    return () => {
+      window.removeEventListener('pagehide', flush)
+      document.removeEventListener('visibilitychange', flush)
+    }
+  }, [])
+
+  // Puts this device's show online, with you as owner, and opens it there.
+  const shareDeviceShow = async () => {
+    if (!account.user) return
+    const id = await shareShow(sharedId ? loadStoredShow() : show, account.user)
+    openShared(id)
+    setShowsOpen(false)
+  }
+
+  const sharedLoading = !!sharedId && (!syncStatus || syncStatus.state === 'loading')
+
+  // New and Open work on this device's show; from a shared one, they switch back to it
+  // (the shared show stays online as it is).
+  const startNewShow = () => {
+    const ask = sharedId
+      ? 'Start a new show on this device? It replaces the show kept on this device; the shared show stays online as it is.'
+      : 'Start a new show? This replaces the current show in this browser. Save it first if you want to keep it.'
+    if (!confirm(ask)) return
+    if (sharedId) openDevice(newShow())
+    else replaceShow(newShow())
+    clearSelection()
+  }
+
   const openShow = async () => {
+    if (sharedId && !confirm('Open a show file on this device? It replaces the show kept on this device; the shared show stays online as it is.')) return
     const text = await pickTextFile('.json,application/json')
     if (text == null) return
     try {
-      replaceShow(normalizeShow(JSON.parse(text)))
-      setSelectedCableId(null)
-      setSelectedBundleId(null)
-      setSelectedRackId(null)
-      setSelectedGearId(null)
+      const opened = normalizeShow(JSON.parse(text))
+      if (sharedId) openDevice(opened)
+      else replaceShow(opened)
+      clearSelection()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Could not open that file.')
     }
@@ -276,6 +414,15 @@ export default function App() {
           value={show.name}
           onChange={(e) => update((s) => ({ ...s, name: e.target.value }))}
         />
+        {sharedId && (
+          <button
+            className={`shared-chip ${syncStatus?.state ?? 'loading'}`}
+            onClick={() => setMembersOpen(true)}
+            title="Shared show: who's in it"
+          >
+            Shared · {syncText(syncStatus)}
+          </button>
+        )}
         {(winamp || pixel) && <AmpDisplay show={show} />}
         <div className="file-actions">
           <button
@@ -312,7 +459,22 @@ export default function App() {
           >
             Show Setup
           </button>
-          <FileMenu onSave={saveShow} onOpen={openShow} onNew={startNewShow} />
+          {cloudAvailable() && account.user !== undefined && (
+            <button
+              className="account-btn"
+              onClick={() => (account.user ? setShowsOpen(true) : setSigningIn(true))}
+              title={account.user ? `Signed in as ${account.user.email}. Shows…` : 'Sign in to work on shared shows'}
+            >
+              {account.user ? account.user.displayName?.split(' ')[0] || account.user.email : 'Sign in'}
+            </button>
+          )}
+          <FileMenu
+            onSave={saveShow}
+            onOpen={openShow}
+            onNew={startNewShow}
+            onShows={cloudAvailable() ? () => setShowsOpen(true) : undefined}
+            onMembers={sharedId && account.user ? () => setMembersOpen(true) : undefined}
+          />
           <button
             className="icon-btn help-btn"
             onClick={() => setHelpOpen(true)}
@@ -343,6 +505,18 @@ export default function App() {
       </nav>
 
       <main className="content">
+        {sharedLoading ? (
+          <div className="empty">
+            <p>Opening the shared show…</p>
+            <p className="muted">
+              The first time takes a moment; after that it opens from this device, even offline.{' '}
+              <button className="link" onClick={() => openDevice()}>
+                Open this device's show instead
+              </button>
+            </p>
+          </div>
+        ) : (
+          <>
         {tab === 'setup' && <ShowSetupView show={show} update={update} />}
         {tab === 'cables' && (
           <CablesView
@@ -403,6 +577,8 @@ export default function App() {
           />
         )}
         {tab === 'types' && <CableTypesView show={show} update={update} />}
+          </>
+        )}
       </main>
 
       {/* Location fields (racks, bundles) suggest places only. */}
@@ -432,6 +608,46 @@ export default function App() {
       </datalist>
 
       {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} />}
+      {signingIn && <SignInDialog onClose={() => setSigningIn(false)} />}
+      {showsOpen && (
+        <ShowsDialog
+          user={account.user ?? null}
+          verified={account.verified}
+          recheck={account.recheck}
+          openId={sharedId}
+          deviceName={sharedId ? loadStoredShow().name : show.name}
+          onOpenDevice={() => {
+            openDevice()
+            setShowsOpen(false)
+          }}
+          onOpenShared={(id) => {
+            openShared(id)
+            setShowsOpen(false)
+          }}
+          onShareDevice={shareDeviceShow}
+          onSignIn={() => {
+            setShowsOpen(false)
+            setSigningIn(true)
+          }}
+          onSignOut={() => {
+            setShowsOpen(false)
+            if (sharedId) openDevice()
+            void signOutAccount()
+          }}
+          onClose={() => setShowsOpen(false)}
+        />
+      )}
+      {membersOpen && account.user && sharedId && (
+        <MembersDialog
+          user={account.user}
+          showId={sharedId}
+          onGone={() => {
+            setMembersOpen(false)
+            openDevice()
+          }}
+          onClose={() => setMembersOpen(false)}
+        />
+      )}
 
       {/* The 8-bit skin's switch: a mushroom, tucked away in the corner. */}
       <button

@@ -28,6 +28,7 @@ To build the single-file app instead, run `npm run build`, then open `dist/Proto
 ## Data
 
 - Shows autosave in the browser you're using. **File → Save** downloads a `.protodb.json` show file, and **File → Open** loads one, so shows move between computers (and between the hosted and local copies) as files.
+- On the web, shows can also be shared: sign in, share a show, and invite people by email, and everyone works on it at once (it keeps working offline and catches up). Shared shows and sign-in live in a Firebase project (`src/cloud/firebase.ts`); `firestore.rules` holds the database rules that keep each show to its members. Running your own copy against your own Firebase project means swapping in its config and publishing those rules.
 - New shows start with the cable types in `cable_types.csv` and the gear models in `gear_models.csv`. Edit either in a spreadsheet, or import them on the Cable Types tab and Gear → Models. The starter gear port lists are drafts; check them against spec sheets.
 
 ## Feedback

@@ -1,12 +1,15 @@
-# Proto Database
+# Proto Database Online
 
-The hosted build of Proto Database, a cable database for theatrical audio departments.
+The online version of Proto Database, a cable database for theatrical audio departments: several people can work on one show at once.
 
-Open it at **https://myreknight.github.io/Proto-Database-App/**
+Open it at **https://myreknight.github.io/Proto-Database-Online/**
 
-Shows are saved in your own browser, and as `.protodb.json` files from the File menu. Nothing you enter is uploaded.
+This is the version being tested for working together. The everyday version, where shows stay on your own computer, is at https://myreknight.github.io/Proto-Database-App/.
 
-**New here? Read the [tips and shortcuts](TIPS.md)**: undo, keyboard-only cable entry, drag-to-fill, pasting from a spreadsheet and more.
+- Shows on your own device work the same as always: saved in your browser, and as `.protodb.json` files from the File menu. Nothing is uploaded unless you share a show.
+- **Sign in** (Google, or an email and password) to work on shared shows. A shared show lives online, and only the people its owner invites can open it.
+
+**New here? Read the [tips and shortcuts](TIPS.md)**, especially [Working together](TIPS.md#working-together).
 
 ## Feedback and feature requests
 
@@ -14,4 +17,4 @@ Shows are saved in your own browser, and as `.protodb.json` files from the File 
 - [Report a bug](https://github.com/Myreknight/Proto-Database-App/issues/new?template=bug_report.yml)
 - [Send general feedback](https://github.com/Myreknight/Proto-Database-App/issues/new?template=feedback.yml)
 
-You'll need a free GitHub account. Everything posted here is public, so leave out anything private about a show.
+Say it's about the online version. You'll need a free GitHub account. Everything posted there is public, so leave out anything private about a show.

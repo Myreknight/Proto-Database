@@ -3338,3 +3338,100 @@ button.add-unit {
   align-items: center;
   padding: 5px 8px;
 }
+
+/* Shared shows: the chip by the show name, the account button, and their dialogs */
+
+.shared-chip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+}
+
+.shared-chip.synced {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+}
+
+.shared-chip.offline {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.account-btn {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signin-dialog,
+.shows-dialog {
+  width: 520px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+
+.signin-dialog .field input {
+  width: 100%;
+}
+
+.signin-google {
+  width: 100%;
+  margin: 10px 0 4px;
+  padding: 8px;
+  font-weight: 600;
+}
+
+.signin-or {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.signin-or::before,
+.signin-or::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
+
+.signin-switch {
+  margin: 10px 0 0;
+  text-align: center;
+}
+
+.shows-dialog h3 {
+  margin: 14px 0 4px;
+}
+
+.shows-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+
+.shows-row .grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.invite-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.danger-row {
+  margin-top: 12px;
+}
+
+.dialog-actions .grow {
+  flex: 1;
+  align-self: center;
+}

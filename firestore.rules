@@ -1,0 +1,116 @@
+rules_version = '2';
+
+// Proto Database: who can read and change shared shows. Paste this into the Firebase
+// console (Firestore Database → Rules) and Publish.
+//
+// A show's document lists its members (memberIds, and members with their roles) and the
+// emails invited to it. Everything inside a show is open to its members only; the owner
+// manages who's in it; invited people join or decline; members can leave.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // An email counts once it's confirmed: a Google account's always is; an email and
+    // password account's is once the link we email is clicked.
+    function verified() {
+      return signedIn() && request.auth.token.email != null && request.auth.token.email_verified == true;
+    }
+
+    function myEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function isMember(data) {
+      return signedIn() && request.auth.uid in data.memberIds;
+    }
+
+    function isOwner(data) {
+      return isMember(data) && data.ownerId == request.auth.uid;
+    }
+
+    function isInvited(data) {
+      return verified() && myEmail() in data.inviteEmails;
+    }
+
+    function changed() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // Joining with the invitation's role: adds just yourself, and uses up just your invitation.
+    function accepting() {
+      let before = resource.data;
+      let after = request.resource.data;
+      let me = request.auth.uid;
+      let email = myEmail();
+      return isInvited(before)
+        && changed().hasOnly(['members', 'memberIds', 'invites', 'inviteEmails'])
+        && after.members.diff(before.members).affectedKeys().hasOnly([me])
+        && after.members[me].role == before.invites[email].role
+        && after.members[me].email == email
+        && after.memberIds.toSet() == before.memberIds.toSet().union([me].toSet())
+        && after.invites.diff(before.invites).affectedKeys().hasOnly([email])
+        && !(email in after.invites)
+        && after.inviteEmails.toSet() == before.inviteEmails.toSet().difference([email].toSet());
+    }
+
+    // Turning an invitation down: uses up just yours.
+    function declining() {
+      let before = resource.data;
+      let after = request.resource.data;
+      let email = myEmail();
+      return isInvited(before)
+        && changed().hasOnly(['invites', 'inviteEmails'])
+        && after.invites.diff(before.invites).affectedKeys().hasOnly([email])
+        && !(email in after.invites)
+        && after.inviteEmails.toSet() == before.inviteEmails.toSet().difference([email].toSet());
+    }
+
+    // Leaving: takes just yourself out. The owner can't leave their own show.
+    function leaving() {
+      let before = resource.data;
+      let after = request.resource.data;
+      let me = request.auth.uid;
+      return isMember(before)
+        && before.ownerId != me
+        && changed().hasOnly(['members', 'memberIds'])
+        && after.members.diff(before.members).affectedKeys().hasOnly([me])
+        && !(me in after.members)
+        && after.memberIds.toSet() == before.memberIds.toSet().difference([me].toSet());
+    }
+
+    match /shows/{showId} {
+      allow read: if isMember(resource.data) || isInvited(resource.data);
+
+      // A new show has just its creator in it, as owner, and no invitations yet.
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.memberIds == [request.auth.uid]
+        && request.resource.data.members.keys().hasOnly([request.auth.uid])
+        && request.resource.data.members[request.auth.uid].role == 'owner'
+        && request.resource.data.invites.keys().size() == 0
+        && request.resource.data.inviteEmails.size() == 0;
+
+      // The owner changes anything but who owns it (and stays in it); other members change
+      // its name and info; invited people join or decline; members leave.
+      allow update: if (isOwner(resource.data)
+          && request.resource.data.ownerId == resource.data.ownerId
+          && request.auth.uid in request.resource.data.memberIds)
+        || (isMember(resource.data) && changed().hasOnly(['name', 'info', 'updatedAt']))
+        || accepting()
+        || declining()
+        || leaving();
+
+      allow delete: if isOwner(resource.data);
+
+      // Everything in a show: its cables, bundles, racks, gear, models, cable types,
+      // checklist entries, and the order of its lists. Members only.
+      match /{kind}/{itemId} {
+        allow read, write: if kind in ['cableTypes', 'cables', 'bundles', 'racks', 'gearCategories', 'gear', 'gearModels', 'checks', 'meta']
+          && isMember(get(/databases/$(database)/documents/shows/$(showId)).data);
+      }
+    }
+  }
+}

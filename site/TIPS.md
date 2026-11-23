@@ -4,10 +4,24 @@ Shortcuts are written for a Mac. On Windows, use Ctrl where it says ⌘.
 
 ## Things to know first
 
-- **Your show lives in the browser you're using.** It saves itself as you work, but only there. To back it up or move it to another computer or browser, use **File → Save** (⌘S) to download a `.protodb.json` file, and **File → Open** to load it again. Clearing your browser's data erases the copy in the browser, so save a file now and then.
+- **Your show lives in the browser you're using** (unless it's a shared show; see [Working together](#working-together)). It saves itself as you work, but only there. To back it up or move it to another computer or browser, use **File → Save** (⌘S) to download a `.protodb.json` file, and **File → Open** to load it again. Clearing your browser's data erases the copy in the browser, so save a file now and then.
 - **⌘Z undoes** and **⌘⇧Z redoes** (⌘Y works too), even while you're typing in a field.
 - **The app warns but never blocks.** A ⚠ appears for things like two cables on one port, a bundle cable flagged at the wrong end, or overlapping gear in a rack. Fix it or leave it; it's your call.
 - **Gear links are plain text.** Start a cable end or patch cell with a gear name and it links to that gear. See [Cables and gear](#cables-and-gear) below.
+
+## Working together
+
+On the web version, several people can work on one show at once, each on their own computer.
+
+- **Sign in** (top right) with Google, or make an account with an email and password. An email account gets a link to confirm its address; open it before joining a show you're invited to.
+- **File → Shows…** lists the show on this device, the shared shows you're in, and invitations waiting for you (**Join** or **Decline**).
+- **Share this device's show** (in Shows) puts it online with you as its owner. The copy on this device stays as it is.
+- **Members** (File → Members…, or click the **Shared** chip by the show name): the owner invites people by email, takes them out, or deletes the show for everyone. Anyone else can leave.
+- **Changes sync as you work**, field by field. Two people editing different cables, or different fields of one cable, both land; if two people change the same field at once, the last one wins.
+- **The chip says how it's going:** *Synced*, *Saving…*, or *Offline · changes saved here*. Offline, keep working; everything catches up when you're back.
+- **Undo only undoes your own changes**, never someone else's.
+- **New show and Open show file** work on this device's show, so they switch you back to it; the shared show stays online as it is. **Save show file** saves a copy of whichever show is open.
+- Sharing needs the web address. The single-file app opened from your disk works on its own, as always.
 
 ## Keyboard
 

@@ -1,12 +1,13 @@
 #!/bin/zsh
-# Publishes the built app to the public GitHub Pages repo. Only the built page
-# and the files in site/ go there; this source repo stays private. The first
-# run creates the repo and turns on Pages.
+# Publishes the built app to a public GitHub Pages repo: Proto-Database-App by
+# default, or another one named as the first argument (the online version goes
+# to Proto-Database-Online). Only the built page and the files in site/ go there.
+# The first run for a repo creates it and turns on Pages.
 set -euo pipefail
 cd "${0:A:h}/.."
 
-repo=Myreknight/Proto-Database-App
-site=https://myreknight.github.io/Proto-Database-App/
+repo=${1:-Myreknight/Proto-Database-App}
+site=https://myreknight.github.io/${repo#*/}/
 version=$(node -p "require('./package.json').version")
 
 npm run build >/dev/null
