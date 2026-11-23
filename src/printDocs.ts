@@ -1,6 +1,6 @@
 // What the Print tab can print, in the order its list shows them.
 
-export type PrintDoc = 'cable-list' | 'labels' | 'checklists' | 'bundle-sheets' | 'gear-list' | 'rack-drawings'
+export type PrintDoc = 'cable-list' | 'labels' | 'checklists' | 'bundle-sheets' | 'gear-list' | 'rack-drawings' | 'switch-labels'
 
 export const PRINT_DOCS: { group: string; docs: { id: PrintDoc; label: string; hint: string }[] }[] = [
   {
@@ -22,6 +22,7 @@ export const PRINT_DOCS: { group: string; docs: { id: PrintDoc; label: string; h
     docs: [
       { id: 'gear-list', label: 'Gear List', hint: 'Totaled by category and model' },
       { id: 'rack-drawings', label: 'Rack Drawings', hint: 'Elevations, parts and flow' },
+      { id: 'switch-labels', label: 'Switch Labels', hint: 'Port labels in VLAN colours, actual size' },
     ],
   },
 ]
@@ -33,6 +34,7 @@ const FOR_TAB: Record<string, PrintDoc> = {
   bundles: 'bundle-sheets',
   racks: 'rack-drawings',
   gear: 'gear-list',
+  network: 'switch-labels',
   checks: 'checklists',
 }
 

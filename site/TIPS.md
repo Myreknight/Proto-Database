@@ -172,6 +172,15 @@ Copy a column of cells in Excel, Numbers or Google Sheets, click a tail cell, an
 - **On the gear list**, steck rails are counted by size under Racks (`1RU steck rail · SR 1–3`).
 - **Each rack page** switches between Elevation and Flow, and exports a PDF (elevation, parts list and flow), SVG or DXF. **Print → Rack Drawings** prints every rack, or makes one PDF of them all. Untick **Flow pages** there to leave the flow pages out; the rack page's PDF follows the same setting.
 
+## Network switches
+
+- **A switch is a model with Network switch ticked.** Tick it on a unit (next to the card fields) or in the **Switch** column of Gear → Models. The starter library's switches already are: Generic, Luminex GigaCore, and NETGEAR M4250, M4300 and M4350 (their SFP ports are drafts; check them against the front panel). An older show picks them up with Gear → Models → **Update from starter list**.
+- **The Network tab** lists the show's switches and its **VLANs** (number, name, colour). VLAN 1 is always there. Renumbering a VLAN moves every port on it; deleting one puts its ports back on VLAN 1. **Add a switch** makes a new unit of a switch model (SW 1, SW 2…).
+- **Open a switch** to see its ports drawn the way the label prints. Click a port to pick it, or Shift-click for a run. The bar above the table sets **Mode** (Access or Trunk), **VLAN**, **Tagged VLANs** (a trunk's, typed like `10, 20-30`) and **Colour** for every picked port. Each row in the table does the same for one port. **Esc** unpicks.
+- **A port's colour** is its VLAN's, unless you give it one of its own (× puts it back). A trunk shows its tagged VLANs as a band of colours.
+- **Label text:** type a few words for a port, or leave it blank and the label prints what's patched there (the other end of the cable).
+- **Front panel** (at the bottom of a switch's page) sets the model's rows, which ports are SFP cages, and wider gaps between groups, for every switch of that model.
+
 ## Bundles and linked cables
 
 - **Flag one end** of each cable in a bundle so all the same ends land together. A cable flagged at the opposite end gets a warning.
@@ -187,6 +196,7 @@ Everything prints from the **Print** tab: Cable List, Labels, Checklists, Bundle
 - Pick a printout on the left (↑ and ↓ work there), set it up, and **Print** is always at the top right. CSV and PDF exports sit beside it.
 - The Bundles, Racks, Gear and Checklists tabs each have a **Print…** button that jumps to their printout, and so does ⌘P.
 - The app remembers the last printout you used.
+- **Switch Labels** prints port labels at real size, to sit over a switch's ports: print at 100% (Actual size) and check the 50 mm ruler. A switch wider than the page prints in parts. For a label that goes somewhere else (on top of the switch, or a steck blank), set **Size** to **Fit an area** and give its width and height, or click **1RU blank** or **2RU blank** (19 × 1.75 in and 19 × 3.5 in). The drawing is scaled to fit and centred, and the cut line is drawn at that size. An area wider than the page prints in pieces that butt together, marked 1/2, 2/2. **in / mm** switches every length between inches and millimetres. **Label style** sets the port shape, text, paper and what's shown; **Port sizes** are estimates until you measure one switch (the spacing between ports matters most). **Download SVG** saves one switch's whole label.
 - **Gear List** prints all the gear, one list ("Production Gear List"), or **All, by list**: one printout with a section for each. The CSV follows the same choice.
 - **The credits** at the top of each printout come from **Show Setup → Audio team**. Untick a role there to leave it off this show (any names in it are kept, in case you turn it back on), or **+ Add a role** for one of your own, like RF Tech.
 

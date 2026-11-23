@@ -4,6 +4,7 @@ import { newId } from './ids'
 import { endConnectors } from './labels'
 import { gearMatcher, type GearHit } from './match'
 import { gearModelOf, gearRu, modelKey } from './models'
+import { layoutFromCsv, layoutToCsv, parseSwitchRows } from './network'
 import { expandPorts, findPort, portKey, portsAfter, textSeries } from './ports'
 import { frontRowsUsed, placeGear, placeUnplaced } from './racking'
 import { ensureRack, rackById, starterModelRows, steckMount, typeById, visibleTails } from './show'
@@ -28,6 +29,7 @@ export function newGear(overrides: Partial<Gear> = {}): Gear {
     steck: null,
     host: null,
     listId: null,
+    switchPorts: {},
     ...overrides,
   }
 }
@@ -116,6 +118,7 @@ export function setModelField(
             slots: '',
             card: '',
             cardNumbering: 'slot',
+            switchLayout: null,
             ports: '',
             notes: '',
             ...changes,
@@ -229,6 +232,7 @@ export function mergeGearModels(show: Show, rows: GearModelRow[], mode: 'replace
         changes.card = row.card
         changes.cardNumbering = parseNumbering(row.numbering)
       }
+      if (!m.switchLayout && parseSwitchRows(row.switch)) changes.switchLayout = layoutFromCsv({ ...row, ports: changes.ports ?? m.ports })
       if (Object.keys(changes).length) {
         gearModels[i] = { ...m, ...changes }
         updated++
@@ -244,6 +248,7 @@ export function mergeGearModels(show: Show, rows: GearModelRow[], mode: 'replace
       slots: row.slots,
       card: row.card,
       cardNumbering: parseNumbering(row.numbering),
+      switchLayout: layoutFromCsv(row),
       ports: row.ports,
       notes: row.notes,
     }
@@ -270,7 +275,8 @@ export function starterChanges(show: Show): { missing: number; fills: number } {
       (!m.ports.trim() && r.ports) ||
       (!m.categoryId && r.category) ||
       (!m.slots.trim() && r.slots) ||
-      (!m.card.trim() && r.card)
+      (!m.card.trim() && r.card) ||
+      (!m.switchLayout && parseSwitchRows(r.switch))
     )
       fills++
   }
@@ -293,6 +299,7 @@ export function gearModelsToCsv(show: Show): string {
       m.slots,
       m.card,
       m.card.trim() ? (m.cardNumbering === 'continue' ? 'Count on' : 'Per slot') : '',
+      ...layoutToCsv(m.switchLayout),
       m.ports,
       m.notes,
     ]),

@@ -12,6 +12,7 @@ import {
   starterChanges,
 } from '../gear'
 import { newId } from '../ids'
+import { defaultLayout } from '../network'
 import { expandPorts } from '../ports'
 import type { GearModel, Show } from '../types'
 import { AddFromModelDialog } from './AddFromModelDialog'
@@ -96,6 +97,7 @@ export function GearModelsView({ show, update, toolbar, onAdded }: Props) {
       slots: '',
       card: '',
       cardNumbering: 'slot',
+      switchLayout: null,
       ports: '',
       notes: '',
     }
@@ -210,6 +212,7 @@ export function GearModelsView({ show, update, toolbar, onAdded }: Props) {
               <th title="Half the rack's width, so two sit side by side">Half</th>
               <th title="Card slots this model has, e.g. SD In 1-7, SD Out 1-7">Slots</th>
               <th title="If it's a card: the kind of slot it fits (SD In, RY, HY…)">Card for</th>
+              <th title="A network switch: its units get a page on the Network tab for VLAN port labels">Switch</th>
               <th>Ports</th>
               <th>Notes</th>
               <th className="num">Units</th>
@@ -286,6 +289,16 @@ export function GearModelsView({ show, update, toolbar, onAdded }: Props) {
                       aria-label="Card for which slots"
                       title={m.card.trim() ? (m.cardNumbering === 'continue' ? 'Ports count on through the slots' : 'Ports named by slot') : undefined}
                       onChange={(e) => patchModel(m.id, { card: e.target.value })}
+                    />
+                  </td>
+                  <td className="center">
+                    <input
+                      type="checkbox"
+                      checked={!!m.switchLayout}
+                      aria-label="Network switch"
+                      onChange={(e) =>
+                        patchModel(m.id, { switchLayout: e.target.checked ? defaultLayout(expandPorts(m.ports)) : null })
+                      }
                     />
                   </td>
                   <td>

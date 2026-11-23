@@ -104,6 +104,17 @@ const FIELDS: Record<string, string> = {
   names: 'Names',
   listId: 'List',
   gearLists: 'Gear lists',
+  switchPorts: 'Switch ports',
+  switchLayout: 'Front panel',
+  vlans: 'VLANs',
+  vlan: 'VLAN',
+  tagged: 'Tagged VLANs',
+  mode: 'Mode',
+  desc: 'Label text',
+  sfp: 'SFP ports',
+  gapBefore: 'Gap before',
+  groupCols: 'Gap every N columns',
+  rows: 'Rows',
   ...Object.fromEntries(ROLES.map((r) => [r.id, r.label])),
   ...Object.fromEntries(SCHEDULE.map((d) => [d.id, d.label])),
 }
@@ -143,7 +154,8 @@ export function spotLabel(c: Conflict): string {
       // "Tails · Tail 4" reads twice; the item says it.
       if (ITEMS_IN[parent] && parts.length) parts[parts.length - 1] = name
       else parts.push(name)
-    } else parts.push(FIELDS[key] ?? humanize(key))
+    } else if (keys[i - 1] === 'switchPorts') parts.push(`Port ${key}`)
+    else parts.push(FIELDS[key] ?? humanize(key))
   })
   return parts.join(' · ') || (c.kind === 'show' ? 'Show info' : '')
 }
@@ -188,6 +200,7 @@ function describe(show: Show, v: unknown, key: string): string {
   if (typeof v === 'number') return key === 'length' ? `${v}'` : String(v)
   if (typeof v === 'string') {
     if (key === 'listId') return show.info.gearLists.find((l) => l.id === v)?.name.trim() || '(a list that’s gone)'
+    if (key === 'mode') return v === 'trunk' ? 'Trunk' : 'Access'
     if (idNames[key]) return nameOf(show, idNames[key], v)
     if (v.startsWith('data:image')) return 'a logo image'
     return clip(v)
