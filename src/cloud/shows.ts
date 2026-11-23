@@ -154,7 +154,7 @@ export async function removeMember(id: string, uid: string): Promise<void> {
 export async function deleteShared(id: string): Promise<void> {
   const { db } = cloud()
   const refs = []
-  for (const kind of [...ITEM_KINDS, 'meta']) {
+  for (const kind of [...ITEM_KINDS, 'meta', 'presence']) {
     const snap = await getDocs(collection(db, 'shows', id, kind))
     refs.push(...snap.docs.map((d) => d.ref))
   }

@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
+import { newId } from '../ids'
 import type { Update } from '../App'
 import { imageToDataUrl, pickImageFile } from '../images'
-import { ROLES, SCHEDULE, type DateId, type DateSpan, type RoleId, type Show, type ShowInfo } from '../types'
+import { ROLES, SCHEDULE, type CustomRole, type DateId, type DateSpan, type RoleId, type Show, type ShowInfo } from '../types'
 
 // Days in a range, counting both the first and last day. Null until both dates are set.
 function dayCount({ start, end }: DateSpan): number | null {
@@ -15,11 +16,14 @@ function dayCount({ start, end }: DateSpan): number | null {
 
 function RoleField({
   label,
+  heading,
   add,
   names,
   onChange,
 }: {
   label: string
+  // What shows in place of the label: a custom role's name field, say.
+  heading?: ReactNode
   add: string
   names: string[]
   onChange: (names: string[]) => void
@@ -30,7 +34,7 @@ function RoleField({
   const [focusRow, setFocusRow] = useState<number | null>(null)
   return (
     <div className="role">
-      <span className="role-label">{label}</span>
+      {heading ?? <span className="role-label">{label}</span>}
       <div className="role-names">
         {list.map((name, i) => (
           <div key={i} className="role-row">
@@ -80,6 +84,25 @@ export function ShowSetupView({ show, update }: { show: Show; update: Update }) 
 
   const setTeam = (role: RoleId, names: string[]) =>
     update((s) => ({ ...s, info: { ...s.info, team: { ...s.info.team, [role]: names } } }))
+
+  // Built-in roles on and off; the show's own roles added, renamed, staffed and taken out.
+  const [newRole, setNewRole] = useState<string | null>(null)
+  const toggleRole = (role: RoleId, on: boolean) =>
+    patchInfo({ hiddenRoles: on ? info.hiddenRoles.filter((r) => r !== role) : [...info.hiddenRoles, role] })
+  const setCustom = (id: string, changes: Partial<CustomRole>) =>
+    update((s) => ({
+      ...s,
+      info: { ...s.info, customRoles: s.info.customRoles.map((r) => (r.id === id ? { ...r, ...changes } : r)) },
+    }))
+  const addRole = () => {
+    const id = newId()
+    setNewRole(id)
+    update((s) => ({ ...s, info: { ...s.info, customRoles: [...s.info.customRoles, { id, label: '', names: [] }] } }))
+  }
+  const removeRole = (role: CustomRole) => {
+    if (role.names.some((n) => n.trim()) && !confirm(`Take out the ${role.label || 'new'} role and its names?`)) return
+    update((s) => ({ ...s, info: { ...s.info, customRoles: s.info.customRoles.filter((r) => r.id !== role.id) } }))
+  }
 
   const uploadLogo = async () => {
     const file = await pickImageFile()
@@ -179,7 +202,19 @@ export function ShowSetupView({ show, update }: { show: Show; update: Update }) 
 
         <section className="setup-card team-card">
           <h3>Audio team</h3>
-          {ROLES.map((role) => (
+          <div className="role-toggles" role="group" aria-label="Roles on this show">
+            {ROLES.map((role) => (
+              <label key={role.id} className="check inline small">
+                <input
+                  type="checkbox"
+                  checked={!info.hiddenRoles.includes(role.id)}
+                  onChange={(e) => toggleRole(role.id, e.target.checked)}
+                />
+                {role.label}
+              </label>
+            ))}
+          </div>
+          {ROLES.filter((role) => !info.hiddenRoles.includes(role.id)).map((role) => (
             <RoleField
               key={role.id}
               label={role.label}
@@ -188,7 +223,36 @@ export function ShowSetupView({ show, update }: { show: Show; update: Update }) 
               onChange={(names) => setTeam(role.id, names)}
             />
           ))}
-          <small className="muted">The team is credited at the top of printed lists.</small>
+          {info.customRoles.map((role) => (
+            <RoleField
+              key={role.id}
+              label={role.label || 'New role'}
+              heading={
+                <div className="role-label custom-role">
+                  <input
+                    value={role.label}
+                    autoFocus={role.id === newRole}
+                    placeholder="Role, e.g. RF Tech"
+                    aria-label="Role name"
+                    onChange={(e) => setCustom(role.id, { label: e.target.value })}
+                  />
+                  <button className="icon" title="Take out this role" aria-label={`Take out ${role.label || 'this role'}`} onClick={() => removeRole(role)}>
+                    ×
+                  </button>
+                </div>
+              }
+              add={role.label || 'name'}
+              names={role.names}
+              onChange={(names) => setCustom(role.id, { names })}
+            />
+          ))}
+          <button className="add-person add-role" onClick={addRole}>
+            + Add a role
+          </button>
+          <small className="muted">
+            The team is credited at the top of printed lists. Untick a role the show doesn't use to leave it out; its
+            names are kept.
+          </small>
         </section>
       </div>
     </section>

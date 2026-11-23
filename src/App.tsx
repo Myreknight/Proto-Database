@@ -3,6 +3,7 @@ import { BundlesView } from './components/BundlesView'
 import { CablesView } from './components/CablesView'
 import { CableTypesView } from './components/CableTypesView'
 import { ChecklistsView } from './components/ChecklistsView'
+import { ConflictsDialog } from './components/ConflictsDialog'
 import { FileMenu } from './components/FileMenu'
 import { GearView } from './components/GearView'
 import { HelpDialog } from './components/HelpDialog'
@@ -11,12 +12,14 @@ import { RacksView } from './components/RacksView'
 import { ShowSetupView } from './components/ShowSetupView'
 import { MembersDialog } from './components/MembersDialog'
 import { MushroomIcon, PixelHud } from './components/PixelDecor'
+import { PresenceBar } from './components/PresenceBar'
 import { ShowsDialog } from './components/ShowsDialog'
 import { SignInDialog } from './components/SignInDialog'
 import { AmpDisplay, AmpTitleBar } from './components/WinampDecor'
 import { onSignedOut, signOutAccount, useAccount } from './cloud/account'
 import { firestoreBackend } from './cloud/backend'
 import { cloud, cloudAvailable } from './cloud/firebase'
+import { checkIn, CHECK_IN_MS, checkOut, isHere, peopleHere, sessionId, watchPresence, type Presence } from './cloud/presence'
 import { shareShow } from './cloud/shows'
 import { downloadText, pickTextFile, safeFilename } from './files'
 import { gearNames, patchReport } from './gear'
@@ -32,8 +35,10 @@ import {
   normalizeShow,
   storeShow,
 } from './show'
+import { keepMine } from './sync/conflicts'
+import { heldStore } from './sync/held'
 import { diffShows } from './sync/patch'
-import { openSession, type Session, type SyncStatus } from './sync/session'
+import { openSession, type Conflict, type Session, type SyncStatus } from './sync/session'
 import type { Show } from './types'
 
 export type Update = (fn: (show: Show) => Show) => void
@@ -67,7 +72,8 @@ function loadOpenShared(): string | null {
 // What the shared chip in the top bar says.
 function syncText(status: SyncStatus | null): string {
   if (!status || status.state === 'loading') return 'Opening…'
-  if (status.state === 'offline') return 'Offline · changes saved here'
+  if (status.state === 'connecting') return 'Connecting…'
+  if (status.state === 'offline') return status.unsent ? 'Offline · changes saved here' : 'Offline'
   if (status.state === 'saving') return 'Saving…'
   return 'Synced'
 }
@@ -103,8 +109,17 @@ export default function App() {
   const sharedRef = useRef(sharedId)
   const [showsOpen, setShowsOpen] = useState(false)
   const [membersOpen, setMembersOpen] = useState(false)
+  // Things you and someone else both changed, waiting for you to pick (kept with the show's id).
+  const [conflictState, setConflicts] = useState<{ id: string; list: Conflict[] } | null>(null)
+  const conflicts = conflictState && conflictState.id === sharedId ? conflictState.list : []
+  const [conflictsOpen, setConflictsOpen] = useState(false)
   const [signingIn, setSigningIn] = useState(false)
   const sessionRef = useRef<Session | null>(null)
+  // Who has the shared show open (kept with its id, like the sync status), and a clock
+  // that ticks so people drop off once their check-ins stop.
+  const [presence, setPresence] = useState<{ id: string; list: Presence[] } | null>(null)
+  const [clock, setClock] = useState(() => Date.now())
+  const tabLabelRef = useRef('')
   // The show as the session last gave it; what's changed since goes up as one change.
   const baseRef = useRef<Show | null>(null)
   const winamp = skin === 'winamp'
@@ -262,11 +277,12 @@ export default function App() {
         dispatch(first ? { type: 'reset', show: next } : { type: 'remote', show: next })
       },
       status: (status) => setSync({ id: sharedId, status }),
+      conflicts: (list) => setConflicts({ id: sharedId, list }),
       error: (message) => {
         alert(message)
         openDevice()
       },
-    })
+    }, { by: uid, store: heldStore(sharedId, uid) })
     sessionRef.current = session
     return () => {
       session.close()
@@ -292,6 +308,47 @@ export default function App() {
     session.push(diffShows(base, show))
     baseRef.current = show
   }, [show])
+
+  // Being here: checks in on opening a shared show, every couple of minutes, and on
+  // switching tabs; checks out on leaving it or closing the page.
+  const presenceSession = useRef<string | null>(null)
+  useEffect(() => {
+    const user = account.user
+    if (!sharedId || !user) return
+    const session = sessionId(user)
+    presenceSession.current = session
+    const beat = () => void checkIn(sharedId, session, user, tabLabelRef.current).catch(() => {})
+    let tidied = false
+    const unwatch = watchPresence(
+      sharedId,
+      (list) => {
+        setPresence({ id: sharedId, list })
+        // Your own windows that closed without checking out go, once.
+        if (!tidied) {
+          tidied = true
+          const now = Date.now()
+          for (const p of list) if (p.uid === user.uid && p.id !== session && !isHere(p, now)) void checkOut(sharedId, p.id).catch(() => {})
+        }
+      },
+      () => {},
+    )
+    beat()
+    const timer = setInterval(beat, CHECK_IN_MS)
+    const ticker = setInterval(() => setClock(Date.now()), 30_000)
+    const leave = () => void checkOut(sharedId, session).catch(() => {})
+    window.addEventListener('pagehide', leave)
+    return () => {
+      clearInterval(timer)
+      clearInterval(ticker)
+      unwatch()
+      window.removeEventListener('pagehide', leave)
+      leave()
+      presenceSession.current = null
+    }
+  }, [sharedId, account.user])
+
+  const presenceList = presence && presence.id === sharedId ? presence.list : []
+  const othersHere = peopleHere(presenceList, clock).filter((p) => p.uid !== uid)
 
   // Anything still waiting goes up before the page closes or hides.
   useEffect(() => {
@@ -366,6 +423,24 @@ export default function App() {
     setTab('gear')
   }
 
+  // Deciding conflicts: keeping yours is an edit like any other (so it can be undone);
+  // keeping theirs just clears it, since theirs is what's showing.
+  const keepConflicts = (list: Conflict[], keep: 'mine' | 'theirs') => {
+    if (keep === 'mine') update((s) => list.reduce(keepMine, s))
+    sessionRef.current?.resolve(list.map((c) => c.key))
+  }
+
+  const openConflict = (c: Conflict) => {
+    setConflictsOpen(false)
+    if (c.kind === 'cables') openCable(c.id)
+    else if (c.kind === 'bundles') openBundle(c.id)
+    else if (c.kind === 'racks') openRack(c.id)
+    else if (c.kind === 'gear') openGear(c.id)
+    else if (c.kind === 'gearModels' || c.kind === 'gearCategories') setTab('gear')
+    else if (c.kind === 'cableTypes') setTab('types')
+    else if (c.kind === 'show') setTab('setup')
+  }
+
   const bundleIssues = bundleLengthMismatchCount(show) + flagReversedCount(show)
   const tabs: { id: Tab; label: string; count?: number; flags?: number; flagTitle?: string }[] = [
     { id: 'cables', label: 'Cables', count: show.cables.length },
@@ -395,6 +470,18 @@ export default function App() {
     { id: 'types', label: 'Cable Types', count: show.cableTypes.length },
   ]
 
+  // Which tab you're on, for others to see; a switch checks in (after a moment, so flicking
+  // through tabs is one write).
+  const tabLabel = tab === 'setup' ? 'Show Setup' : (tabs.find((t) => t.id === tab)?.label ?? '')
+  useEffect(() => {
+    tabLabelRef.current = tabLabel
+    const session = presenceSession.current
+    const user = account.user
+    if (!sharedId || !session || !user) return
+    const timer = setTimeout(() => void checkIn(sharedId, session, user, tabLabel).catch(() => {}), 1500)
+    return () => clearTimeout(timer)
+  }, [tabLabel, sharedId, account.user])
+
   return (
     <div className="app">
       {winamp && <AmpTitleBar />}
@@ -423,6 +510,16 @@ export default function App() {
             Shared · {syncText(syncStatus)}
           </button>
         )}
+        {sharedId && conflicts.length > 0 && (
+          <button
+            className="conflict-chip"
+            onClick={() => setConflictsOpen(true)}
+            title="You and someone else changed the same things. Pick which to keep."
+          >
+            ⚠ {conflicts.length} to decide
+          </button>
+        )}
+        {sharedId && <PresenceBar people={othersHere} onOpen={() => setMembersOpen(true)} />}
         {(winamp || pixel) && <AmpDisplay show={show} />}
         <div className="file-actions">
           <button
@@ -637,10 +734,23 @@ export default function App() {
           onClose={() => setShowsOpen(false)}
         />
       )}
+      {conflictsOpen && account.user && sharedId && (
+        <ConflictsDialog
+          show={show}
+          showId={sharedId}
+          me={account.user.uid}
+          conflicts={conflicts}
+          onKeep={keepConflicts}
+          onOpen={openConflict}
+          onClose={() => setConflictsOpen(false)}
+        />
+      )}
       {membersOpen && account.user && sharedId && (
         <MembersDialog
           user={account.user}
           showId={sharedId}
+          presence={presenceList}
+          now={clock}
           onGone={() => {
             setMembersOpen(false)
             openDevice()

@@ -23,6 +23,8 @@ import type { Gear, Show } from '../types'
 import { PointLink, PortMap } from './PortMap'
 import { PortPicker } from './PortPicker'
 import { PromptDialog } from './PromptDialog'
+import { CardSlots } from './CardSlots'
+import { cardsIn, deleteWithCards, isCardModel, plainCard } from '../cards'
 
 interface Props {
   show: Show
@@ -33,11 +35,12 @@ interface Props {
   onClose: () => void
   onOpenCable: (id: string) => void
   onOpenRack: (id: string) => void
+  onOpenGear: (id: string) => void
 }
 
 const NEW_RACK = '__new-rack__'
 
-export function GearPane({ show, gear, points, report, update, onClose, onOpenCable, onOpenRack }: Props) {
+export function GearPane({ show, gear, points, report, update, onClose, onOpenCable, onOpenRack, onOpenGear }: Props) {
   const [askingRack, setAskingRack] = useState(false)
   const [patching, setPatching] = useState<PatchTarget | null>(null)
   const [copying, setCopying] = useState(false)
@@ -47,6 +50,9 @@ export function GearPane({ show, gear, points, report, update, onClose, onOpenCa
   const modelAtFocus = useRef<{ manufacturer: string; model: string } | null>(null)
   const hasModel = !!gear.model.trim()
   const portSpec = gearModelOf(show, gear)?.ports ?? ''
+  const ownModel = gearModelOf(show, gear)
+  // A card isn't racked; it goes in another unit's slot.
+  const isCard = isCardModel(ownModel)
   const ru = gearModelOf(show, gear)?.ru ?? null
   const half = gearModelOf(show, gear)?.halfWidth ?? false
   const spot = gear.rackId ? placedIn(show, gear.rackId).find((p) => p.gear.id === gear.id) : undefined
@@ -118,8 +124,13 @@ export function GearPane({ show, gear, points, report, update, onClose, onOpenCa
     const linked = points.length
       ? ` ${points.length} cable end(s) or patch point(s) name it; they keep their text but won't link to gear.`
       : ''
-    if (!confirm(`Delete ${label}?${linked}`)) return
-    update((s) => ({ ...s, gear: s.gear.filter((g) => g.id !== gear.id) }))
+    const cards = cardsIn(show, gear.id)
+    const kept = cards.filter((c) => !plainCard(c)).length
+    const cardNote = cards.length
+      ? ` Its ${cards.length} card(s) go with it${kept ? ` (the ${kept} with a name or notes stay on the gear list as spares)` : ''}.`
+      : ''
+    if (!confirm(`Delete ${label}?${linked}${cardNote}`)) return
+    update((s) => deleteWithCards(s, gear.id))
     onClose()
   }
 
@@ -152,7 +163,7 @@ export function GearPane({ show, gear, points, report, update, onClose, onOpenCa
             : 'Cable ends and patch cells that start with this name link here, like “Amp 1-A”. Leave it blank for bulk items counted by Qty.'}
         </p>
 
-        <div className="row2">
+        <div className="row2 file-row">
           <label className="field">
             <span>Category</span>
             <select
@@ -165,6 +176,17 @@ export function GearPane({ show, gear, points, report, update, onClose, onOpenCa
                   {c.name || 'Unnamed category'}
                 </option>
               ))}
+            </select>
+          </label>
+          <label className="field">
+            <span title="Which gear list it's on. Gear → Lists… renames and adds lists.">List</span>
+            <select value={gear.listId ?? ''} onChange={(e) => patchGear({ listId: e.target.value || null })}>
+              {show.info.gearLists.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name || 'Unnamed list'}
+                </option>
+              ))}
+              <option value="">No list</option>
             </select>
           </label>
           <label className="field">
@@ -248,6 +270,40 @@ export function GearPane({ show, gear, points, report, update, onClose, onOpenCa
             )}
           </p>
         )}
+        <div className="row2 card-row">
+          <label className="field" title="Card slots, shared by every unit of this model">
+            <span>Card slots</span>
+            <input
+              value={ownModel?.slots ?? ''}
+              disabled={!hasModel || isCard}
+              placeholder={hasModel ? (isCard ? '—' : 'e.g. SD In 1-7, SD Out 1-7') : 'Needs a model'}
+              onChange={(e) => update((s) => setModelField(s, gear, { slots: e.target.value }))}
+            />
+          </label>
+          <label className="field" title="If this is a card: the kind of slot it fits, shared by every card of this model">
+            <span>Is a card for</span>
+            <input
+              value={ownModel?.card ?? ''}
+              disabled={!hasModel}
+              placeholder={hasModel ? 'Slot kind, e.g. SD In, RY, HY' : 'Needs a model'}
+              onChange={(e) => update((s) => setModelField(s, gear, { card: e.target.value }))}
+            />
+          </label>
+        </div>
+        {isCard && (
+          <label className="field" title="How this card's ports are named in a unit">
+            <span>Its ports in a unit</span>
+            <select
+              value={ownModel?.cardNumbering ?? 'slot'}
+              onChange={(e) => update((s) => setModelField(s, gear, { cardNumbering: e.target.value as 'slot' | 'continue' }))}
+            >
+              <option value="slot">Named by slot (RY3 In 1…)</option>
+              <option value="continue">Count on through the slots (3rd card: In 17…)</option>
+            </select>
+          </label>
+        )}
+
+        {!isCard && (
         <div className="row2 rack-row">
           <label className="field">
             <span>
@@ -301,7 +357,8 @@ export function GearPane({ show, gear, points, report, update, onClose, onOpenCa
             />
           </label>
         </div>
-        {rack && (
+        )}
+        {!isCard && rack && (
           <p className="muted small">
             {spot
               ? `Sits at ${spot.height > 1 ? `U${topOf(spot)}–${spot.bottom}` : `U${spot.bottom}`}, ${spot.side} rails${spot.slot ? `, ${spot.slot} half` : ''}. Move it in the rack.`
@@ -310,6 +367,8 @@ export function GearPane({ show, gear, points, report, update, onClose, onOpenCa
                 : 'Give it a rack size to place it in the rack.'}
           </p>
         )}
+
+        <CardSlots show={show} gear={gear} points={points} update={update} onOpenGear={onOpenGear} />
 
         <label className="field">
           <span>Notes</span>

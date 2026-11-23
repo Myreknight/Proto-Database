@@ -1,4 +1,5 @@
-import { GEAR_MODEL_HEADERS, parseCsv, parseHalfWidth, parseRu, RU_HEADERS, toCsv, type GearModelRow } from './csv'
+import { cardPorts, cardsIn, isCardModel, uniquePorts } from './cards'
+import { GEAR_MODEL_HEADERS, parseCsv, parseHalfWidth, parseNumbering, parseRu, RU_HEADERS, toCsv, type GearModelRow } from './csv'
 import { newId } from './ids'
 import { endConnectors } from './labels'
 import { gearMatcher, type GearHit } from './match'
@@ -7,7 +8,7 @@ import { expandPorts, findPort, portKey, portsAfter, textSeries } from './ports'
 import { frontRowsUsed, placeGear, placeUnplaced } from './racking'
 import { ensureRack, rackById, starterModelRows, steckMount, typeById, visibleTails } from './show'
 import { connectorInfo, genericIn, isSteck, quarterRoom, steckPorts, steckSummary, tailRoom } from './stecks'
-import type { Cable, Gear, GearCategory, GearModel, Show } from './types'
+import type { Cable, Gear, GearCategory, GearList, GearModel, Show } from './types'
 
 export { gearMatcher, gearModelOf, gearRu, modelKey, type GearHit }
 
@@ -25,8 +26,17 @@ export function newGear(overrides: Partial<Gear> = {}): Gear {
     rackSlot: null,
     notes: '',
     steck: null,
+    host: null,
+    listId: null,
     ...overrides,
   }
+}
+
+// The list new gear goes on: the show's first.
+export const defaultListId = (show: Show): string | null => show.info.gearLists[0]?.id ?? null
+
+export function gearListById(show: Show, id: string | null) {
+  return id ? show.info.gearLists.find((l) => l.id === id) : undefined
 }
 
 // "Amp 1", or "d&b D80" for a bulk line with no name.
@@ -63,9 +73,16 @@ export function rackRu(show: Show, rackId: string): number {
   return frontRowsUsed(show, rackId)
 }
 
+// A unit's ports: its model's, then those of the cards in its slots (see cards.ts).
 export function gearPorts(show: Show, g: Gear): string[] {
-  return g.steck ? steckPorts() : expandPorts(gearModelOf(show, g)?.ports ?? '')
+  if (g.steck) return steckPorts()
+  const own = expandPorts(gearModelOf(show, g)?.ports ?? '')
+  return show.gear.some((c) => c.host?.gearId === g.id) ? uniquePorts([...own, ...cardPorts(show, g)]) : own
 }
+
+// The gear cable ends and patch cells can link to: everything but the cards in slots,
+// whose ports belong to the unit they're in.
+export const linkable = (show: Show) => show.gear.filter((g) => !g.host)
 
 // Units that share this one's model (and so its ports), including itself.
 export function sameModel(show: Show, g: Gear): Gear[] {
@@ -96,6 +113,9 @@ export function setModelField(
             categoryId: g.categoryId,
             ru: null,
             halfWidth: false,
+            slots: '',
+            card: '',
+            cardNumbering: 'slot',
             ports: '',
             notes: '',
             ...changes,
@@ -204,6 +224,11 @@ export function mergeGearModels(show: Show, rows: GearModelRow[], mode: 'replace
         if (!m.notes.trim()) changes.notes = row.notes
       }
       if (!m.categoryId && row.category) changes.categoryId = categoryFor(row.category)
+      if (!m.slots.trim() && row.slots) changes.slots = row.slots
+      if (!m.card.trim() && row.card) {
+        changes.card = row.card
+        changes.cardNumbering = parseNumbering(row.numbering)
+      }
       if (Object.keys(changes).length) {
         gearModels[i] = { ...m, ...changes }
         updated++
@@ -216,6 +241,9 @@ export function mergeGearModels(show: Show, rows: GearModelRow[], mode: 'replace
       categoryId: categoryFor(row.category),
       ru: parseRu(row.ru),
       halfWidth: parseHalfWidth(row.width),
+      slots: row.slots,
+      card: row.card,
+      cardNumbering: parseNumbering(row.numbering),
       ports: row.ports,
       notes: row.notes,
     }
@@ -237,7 +265,14 @@ export function starterChanges(show: Show): { missing: number; fills: number } {
   for (const r of starterModelRows()) {
     const m = gearModelOf(show, r)
     if (!m) missing++
-    else if ((m.ru == null && parseRu(r.ru) != null) || (!m.ports.trim() && r.ports) || (!m.categoryId && r.category)) fills++
+    else if (
+      (m.ru == null && parseRu(r.ru) != null) ||
+      (!m.ports.trim() && r.ports) ||
+      (!m.categoryId && r.category) ||
+      (!m.slots.trim() && r.slots) ||
+      (!m.card.trim() && r.card)
+    )
+      fills++
   }
   return { missing, fills }
 }
@@ -255,6 +290,9 @@ export function gearModelsToCsv(show: Show): string {
       categoryById(show, m.categoryId)?.name ?? '',
       m.ru == null ? '' : String(m.ru),
       m.halfWidth ? 'Half' : '',
+      m.slots,
+      m.card,
+      m.card.trim() ? (m.cardNumbering === 'continue' ? 'Count on' : 'Per slot') : '',
       m.ports,
       m.notes,
     ]),
@@ -262,7 +300,7 @@ export function gearModelsToCsv(show: Show): string {
 }
 
 export function linkedGear(gear: Gear[], text: string): Gear | undefined {
-  return gearMatcher(gear)(text)?.gear
+  return gearMatcher(gear.filter((g) => !g.host))(text)?.gear
 }
 
 // One cable end or patch cell that names a piece of gear.
@@ -315,7 +353,7 @@ export const fieldKey = (cableId: string, field: string) => `${cableId}|${field}
 // Every cable end and patch cell that names gear, with its port checked against the
 // model's port list and against everything else patched to that port.
 export function patchReport(show: Show): PatchReport {
-  const match = gearMatcher(show.gear)
+  const match = gearMatcher(linkable(show))
   const portLists = new Map<string, string[]>()
   const portsOf = (g: Gear) => {
     let ports = portLists.get(g.id)
@@ -483,7 +521,7 @@ function steckPortIssues(show: Show, list: PatchPoint[]) {
 // Filling a patch column down from one cell: the next ports on the same unit when it has
 // a port list ("SB-SL · In 1" → In 2, In 3…), otherwise the next number or letter.
 export function patchSeries(show: Show, text: string, count: number): string[] {
-  const hit = gearMatcher(show.gear)(text)
+  const hit = gearMatcher(linkable(show))(text)
   if (hit?.rest) {
     const ports = gearPorts(show, hit.gear)
     const found = ports.length ? findPort(ports, hit.rest) : null
@@ -567,6 +605,7 @@ export function addUnitsOfModel(
     categoryId: model.categoryId,
     qty: named ? 1 : Math.max(1, count),
     rackId,
+    listId: defaultListId(show),
   })
   let next: Show = { ...show, gear: [...show.gear, first] }
   if (rackId) next = placeGear(next, first.id)
@@ -585,20 +624,32 @@ export function copyGear(show: Show, gearId: string, count: number): Show {
   const series = new RegExp(`^${escapeRegExp(prefix.toLowerCase())}(\\d+)$`)
   let highest = match ? 0 : 1
   let last = index
+  // Copies go after the last of the series, and after the cards in it.
+  const inSeries = new Set([unit.id])
   show.gear.forEach((g, i) => {
     const m = g.name.trim().toLowerCase().match(series)
     if (m) {
       highest = Math.max(highest, Number(m[1]))
       last = Math.max(last, i)
+      inSeries.add(g.id)
     }
   })
-  const copies = Array.from({ length: count }, (_, i) => ({
-    ...unit,
-    id: newId(),
-    name: `${prefix}${String(highest + i + 1).padStart(width, '0')}`,
-    // Copies in a rack each get their own spot.
-    rackU: null,
-  }))
+  show.gear.forEach((g, i) => {
+    if (g.host && inSeries.has(g.host.gearId)) last = Math.max(last, i)
+  })
+  const cards = cardsIn(show, unit.id)
+  const copies = Array.from({ length: count }, (_, i) => {
+    const copy = {
+      ...unit,
+      id: newId(),
+      name: `${prefix}${String(highest + i + 1).padStart(width, '0')}`,
+      // Copies in a rack each get their own spot.
+      rackU: null,
+    }
+    // Loaded the same: each copy gets its own cards in the same slots (new cards, so no
+    // name or notes carried over).
+    return [copy, ...cards.map((c) => ({ ...c, id: newId(), name: '', notes: '', host: { gearId: copy.id, slot: c.host!.slot } }))]
+  }).flat()
   const gear = [...show.gear]
   gear.splice(last + 1, 0, ...copies)
   return placeUnplaced({ ...show, gear }, unit.rackId ?? undefined)
@@ -691,9 +742,15 @@ function rackLines(show: Show): GearLine[] {
   return [...bySize.values()].sort((a, b) => a.model.localeCompare(b.model, undefined, { numeric: true }))
 }
 
-export function gearList(show: Show): GearListSection[] {
-  const sections = gearSectionLines(show)
-  const racks = rackLines(show)
+// Which gear a printed gear list covers: all of it, one list's, or all of it split by list.
+export type GearListChoice = 'all' | 'by-list' | string
+
+// The gear list for all gear (listId undefined), one list's gear, or gear on no list
+// (null). The racks and steck rails go with the show's first list.
+export function gearList(show: Show, listId?: string | null): GearListSection[] {
+  const units = show.gear.filter((g) => !g.steck && (listId === undefined || g.listId === listId))
+  const sections = gearSectionLines(show, units)
+  const racks = listId === undefined || listId === defaultListId(show) ? rackLines(show) : []
   if (!racks.length) return sections
   // Racks go under the Racks category (wherever it sits in the order), or last.
   const racksCategory = show.gearCategories.find((c) => c.name.trim().toLowerCase() === 'racks')
@@ -711,9 +768,9 @@ export function gearList(show: Show): GearListSection[] {
   return sections
 }
 
-function gearSectionLines(show: Show): GearListSection[] {
-  return gearSections(show).map(({ category, gear }) => {
-    const lines = new Map<string, { line: GearLine; names: string[]; notes: Set<string> }>()
+function gearSectionLines(show: Show, units: Gear[]): GearListSection[] {
+  return gearSections(show, units).map(({ category, gear }) => {
+    const lines = new Map<string, { line: GearLine; names: string[]; notes: Set<string>; hosts: Map<string, number> }>()
     for (const g of gear) {
       const manufacturer = g.manufacturer.trim()
       const model = g.model.trim()
@@ -724,29 +781,108 @@ function gearSectionLines(show: Show): GearListSection[] {
           line: { key, manufacturer, model: model || (manufacturer ? '' : g.name.trim()), qty: 0, units: '', notes: '' },
           names: [],
           notes: new Set(),
+          hosts: new Map(),
         }
         lines.set(key, entry)
       }
       entry.line.qty += g.qty
-      if (g.name.trim() && (manufacturer || model)) entry.names.push(g.name.trim())
+      // A card goes by the unit it's in ("SD-Rack A ×5"), or as a spare.
+      if (isCardModel(gearModelOf(show, g))) {
+        const host = g.host ? show.gear.find((h) => h.id === g.host!.gearId) : undefined
+        const where = host ? gearLabel(host) : g.name.trim() ? `${g.name.trim()} (spare)` : 'spare'
+        entry.hosts.set(where, (entry.hosts.get(where) ?? 0) + g.qty)
+      } else if (g.name.trim() && (manufacturer || model)) entry.names.push(g.name.trim())
       if (g.notes.trim()) entry.notes.add(g.notes.trim())
     }
-    const done = [...lines.values()].map(({ line, names, notes }) => ({
+    const done = [...lines.values()].map(({ line, names, notes, hosts }) => ({
       ...line,
-      units: nameRuns(names),
+      units: [nameRuns(names), ...[...hosts].map(([where, n]) => (n > 1 ? `${where} ×${n}` : where))].filter(Boolean).join(', '),
       notes: [...notes].join('; '),
     }))
     return { category, lines: done, qty: done.reduce((n, l) => n + l.qty, 0) }
   })
 }
 
-export function gearListToCsv(show: Show): string {
-  return toCsv([
-    ['Category', 'Qty', 'Manufacturer', 'Model', 'Units', 'Notes'],
-    ...gearList(show).flatMap(({ category, lines }) =>
+// Each list's gear list in the show's order, then gear on no list; empty ones left out.
+export function gearListsByList(show: Show): { list: GearList | null; sections: GearListSection[]; qty: number }[] {
+  return [...show.info.gearLists, null]
+    .map((list) => {
+      const sections = gearList(show, list ? list.id : null)
+      return { list, sections, qty: sections.reduce((n, s) => n + s.qty, 0) }
+    })
+    .filter((x) => x.qty > 0)
+}
+
+export function gearListToCsv(show: Show, choice: GearListChoice = 'all'): string {
+  const rows = (sections: GearListSection[]) =>
+    sections.flatMap(({ category, lines }) =>
       lines.map((l) => [category?.name ?? 'Uncategorized', String(l.qty), l.manufacturer, l.model, l.units, l.notes]),
-    ),
-  ])
+    )
+  const header = ['Category', 'Qty', 'Manufacturer', 'Model', 'Units', 'Notes']
+  if (choice === 'by-list') {
+    return toCsv([
+      ['List', ...header],
+      ...gearListsByList(show).flatMap(({ list, sections }) => rows(sections).map((r) => [list?.name ?? 'No list', ...r])),
+    ])
+  }
+  return toCsv([header, ...rows(gearList(show, choice === 'all' ? undefined : choice))])
+}
+
+// Several units changed at once from the Gear tab. Only what's set changes.
+export interface GearBatch {
+  listId?: string | null
+  categoryId?: string | null
+  manufacturer?: string
+  model?: string
+  rackId?: string | null
+  qty?: number
+  // A line added to each unit's notes.
+  addNote?: string
+}
+
+// A new manufacturer or model works as it does on one unit (the library fills in what it
+// knows, and ports carry over to a model it doesn't know yet); a new rack places each unit
+// in it, to be moved in the drawing. Cards stay in their units.
+export function batchEditGear(show: Show, ids: string[], change: GearBatch): Show {
+  const pick = new Set(ids)
+  const simple: Partial<Gear> = {}
+  if (change.listId !== undefined) simple.listId = change.listId
+  if (change.categoryId !== undefined) simple.categoryId = change.categoryId
+  if (change.qty !== undefined) simple.qty = Math.max(1, Math.floor(change.qty) || 1)
+  const note = change.addNote?.trim() ?? ''
+  let next: Show =
+    Object.keys(simple).length || note
+      ? {
+          ...show,
+          gear: show.gear.map((g) => {
+            if (!pick.has(g.id)) return g
+            const unit = { ...g, ...simple }
+            if (note) unit.notes = unit.notes.trim() ? `${unit.notes.trimEnd()}\n${note}` : note
+            return unit
+          }),
+        }
+      : show
+  if (change.manufacturer !== undefined || change.model !== undefined) {
+    for (const id of ids) {
+      const unit = next.gear.find((g) => g.id === id)
+      if (!unit) continue
+      const before = { manufacturer: unit.manufacturer, model: unit.model }
+      const after = { manufacturer: change.manufacturer?.trim() ?? unit.manufacturer, model: change.model?.trim() ?? unit.model }
+      if (after.manufacturer === before.manufacturer && after.model === before.model) continue
+      next = { ...next, gear: next.gear.map((g) => (g.id === id ? { ...g, ...after } : g)) }
+      next = applyLibrary(carryModelPorts(next, id, before), id)
+    }
+  }
+  if (change.rackId !== undefined) {
+    const rackId = change.rackId
+    for (const id of ids) {
+      const unit = next.gear.find((g) => g.id === id)
+      if (!unit || unit.host || unit.steck || unit.rackId === rackId) continue
+      next = { ...next, gear: next.gear.map((g) => (g.id === id ? { ...g, rackId, rackU: null, rackSlot: null } : g)) }
+      if (rackId) next = placeGear(next, id)
+    }
+  }
+  return next
 }
 
 // "Front", "Rear", "Front Left", "Rear R"… for the Side column.
@@ -764,7 +900,7 @@ function parseSide(text: string): Pick<Gear, 'rackSide' | 'rackSlot'> {
   }
 }
 
-export const GEAR_HEADERS = ['Category', 'Name', 'Qty', 'Manufacturer', 'Model', 'Rack', 'Rack U', 'Side', 'Notes', 'Ports', 'RU']
+export const GEAR_HEADERS = ['Category', 'List', 'Name', 'Qty', 'Manufacturer', 'Model', 'Rack', 'Rack U', 'Side', 'Notes', 'Ports', 'RU']
 
 // One row per entry, in the same columns import reads, so a list can go out to a
 // spreadsheet and come back.
@@ -774,6 +910,7 @@ export function gearToCsv(show: Show): string {
     ...gearSections(show).flatMap(({ category, gear }) =>
       gear.map((g) => [
         category?.name ?? '',
+        gearListById(show, g.listId)?.name ?? '',
         g.name,
         String(g.qty),
         g.manufacturer,
@@ -789,11 +926,12 @@ export function gearToCsv(show: Show): string {
   ])
 }
 
-type GearField = 'category' | 'name' | 'qty' | 'manufacturer' | 'model' | 'rack' | 'rackU' | 'side' | 'notes' | 'ports' | 'ru'
+type GearField = 'category' | 'list' | 'name' | 'qty' | 'manufacturer' | 'model' | 'rack' | 'rackU' | 'side' | 'notes' | 'ports' | 'ru'
 
 // Header names other gear lists use for the same columns.
 const HEADER_ALIASES: Record<GearField, string[]> = {
   category: ['category', 'categories', 'department', 'dept', 'section', 'group'],
+  list: ['list', 'gear list', 'order'],
   name: ['name', 'unit', 'unit name', 'label', 'id'],
   qty: ['qty', 'quantity', 'count', 'amount', '#'],
   manufacturer: ['manufacturer', 'make', 'brand', 'mfr', 'mfg', 'maker'],
@@ -842,6 +980,7 @@ export interface GearImport {
   added: number
   newCategories: string[]
   newRacks: string[]
+  newLists: string[]
   warnings: string[]
 }
 
@@ -849,8 +988,14 @@ export interface GearImport {
 // cables stay linked); an unnamed row updates the bulk line with the same make, model
 // and category. Anything else is added. New categories and racks are created.
 export function importGear(show: Show, rows: GearRow[]): GearImport {
-  let next: Show = { ...show, gearCategories: [...show.gearCategories], gear: [...show.gear] }
+  let next: Show = {
+    ...show,
+    info: { ...show.info, gearLists: [...show.info.gearLists] },
+    gearCategories: [...show.gearCategories],
+    gear: [...show.gear],
+  }
   const newCategories: string[] = []
+  const newLists: string[] = []
   const racksBefore = show.racks.length
   const warnings: string[] = []
   const seenNames = new Set<string>()
@@ -865,6 +1010,15 @@ export function importGear(show: Show, rows: GearRow[]): GearImport {
     next.gearCategories.push(category)
     newCategories.push(name)
     return category.id
+  }
+  const listFor = (name: string): string | null => {
+    if (!name) return null
+    const found = next.info.gearLists.find((l) => l.name.trim().toLowerCase() === name.toLowerCase())
+    if (found) return found.id
+    const list = { id: newId(), name }
+    next.info.gearLists.push(list)
+    newLists.push(name)
+    return list.id
   }
   const rackFor = (name: string): string | null => {
     const result = ensureRack(next, name)
@@ -883,6 +1037,7 @@ export function importGear(show: Show, rows: GearRow[]): GearImport {
     }
     const changes: Partial<Gear> = {}
     if (row.category !== undefined) changes.categoryId = categoryFor(row.category)
+    if (row.list !== undefined) changes.listId = listFor(row.list)
     if (row.manufacturer !== undefined) changes.manufacturer = row.manufacturer
     if (row.model !== undefined) changes.model = row.model
     if (row.rack !== undefined) changes.rackId = rackFor(row.rack)
@@ -914,7 +1069,7 @@ export function importGear(show: Show, rows: GearRow[]): GearImport {
       next.gear[existing] = unit
       updated++
     } else {
-      unit = fromLibrary(next, newGear({ name, ...changes }))
+      unit = fromLibrary(next, newGear({ name, listId: defaultListId(next), ...changes }))
       next.gear.push(unit)
       added++
     }
@@ -937,6 +1092,7 @@ export function importGear(show: Show, rows: GearRow[]): GearImport {
     added,
     newCategories,
     newRacks: next.racks.slice(racksBefore).map((r) => r.name),
+    newLists,
     warnings,
   }
 }

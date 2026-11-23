@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Update } from '../App'
 import { parseRu } from '../csv'
 import { rackDrawing } from '../drawing'
-import { gearLabel, gearRu, newGear, patchReport, rackGear, rackRu } from '../gear'
+import { defaultListId, gearLabel, gearRu, newGear, patchReport, rackGear, rackRu } from '../gear'
 import { rackFlow } from '../flow'
 import { downloadRackDxf, downloadRackPdf, downloadRackSvg, type RackView } from '../rackExport'
 import {
@@ -83,7 +83,7 @@ export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear 
 
   // A new unit in this rack, opened in the Gear tab to fill in.
   const addNewGear = () => {
-    const unit = newGear({ rackId: rack.id })
+    const unit = newGear({ rackId: rack.id, listId: defaultListId(show) })
     update((s) => ({ ...s, gear: [...s.gear, unit] }))
     onOpenGear(unit.id)
   }
@@ -151,7 +151,7 @@ export function RackPage({ show, rack, update, onClose, onOpenCable, onOpenGear 
         <span className="spacer" />
         <button
           onClick={() => downloadRackPdf(show, rack)}
-          title="Elevation with the parts list, then the flow, on landscape letter pages"
+          title="Elevation with the parts list (and the flow, if Flow pages is on in Print → Rack Drawings), on landscape letter pages"
         >
           PDF
         </button>

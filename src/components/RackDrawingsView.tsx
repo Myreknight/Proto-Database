@@ -2,7 +2,16 @@ import { useEffect, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { rackDrawing } from '../drawing'
 import { rackFlow } from '../flow'
-import { downloadRackDxf, downloadRackPdf, downloadRacksPdf, downloadRackSvg, rackParts, rackSummary } from '../rackExport'
+import {
+  downloadRackDxf,
+  downloadRackPdf,
+  downloadRacksPdf,
+  downloadRackSvg,
+  loadRackPrint,
+  rackParts,
+  rackSummary,
+  storeRackPrint,
+} from '../rackExport'
 import type { Rack, Show } from '../types'
 import { PrintBar } from './PrintBar'
 import { PrintHeader } from './PrintHeader'
@@ -18,9 +27,21 @@ const PRINT_PAGE = '@media print { @page { size: letter landscape; margin: 0.4in
 
 const today = () => new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
 
-function RackSheet({ show, rack, date, onOpenGear }: { show: Show; rack: Rack; date: string; onOpenGear: (id: string) => void }) {
+function RackSheet({
+  show,
+  rack,
+  date,
+  flows,
+  onOpenGear,
+}: {
+  show: Show
+  rack: Rack
+  date: string
+  flows: boolean
+  onOpenGear: (id: string) => void
+}) {
   const name = rack.name || 'Unnamed rack'
-  const flow = rackFlow(show, rack)
+  const flow = flows ? rackFlow(show, rack) : null
   return (
     <section className="rack-sheet">
       <PrintHeader show={show} title={`Rack Drawing · ${name}`} meta={[rackSummary(show, rack), date, `Proto Database v${__APP_VERSION__}`]} />
@@ -81,6 +102,9 @@ function RackSheet({ show, rack, date, onOpenGear }: { show: Show; rack: Rack; d
 
 export function RackDrawingsView({ show, onOpenGear }: Props) {
   const [printDate, setPrintDate] = useState('')
+  // Whether each rack's flow page prints (and goes into the PDFs).
+  const [flows, setFlows] = useState(() => loadRackPrint().flows)
+  useEffect(() => storeRackPrint({ flows }), [flows])
 
   // Stamp the date as printing starts, whether from the button or ⌘P.
   useEffect(() => {
@@ -106,9 +130,13 @@ export function RackDrawingsView({ show, onOpenGear }: Props) {
           </button>
         }
       >
+        <label className="check inline">
+          <input type="checkbox" checked={flows} onChange={(e) => setFlows(e.target.checked)} />
+          Flow pages
+        </label>
         <span className="muted">
-          Each rack gets a landscape page with its parts list, then a page for its flow. SVG and DXF export each rack's
-          elevation at true scale, in inches.
+          Each rack gets a landscape page with its parts list{flows ? ', then a page for its flow' : ''}. SVG and DXF
+          export each rack's elevation at true scale, in inches.
         </span>
       </PrintBar>
       {show.racks.length === 0 ? (
@@ -119,7 +147,7 @@ export function RackDrawingsView({ show, onOpenGear }: Props) {
       ) : (
         <div className="drawings-body">
           {show.racks.map((rack) => (
-            <RackSheet key={rack.id} show={show} rack={rack} date={printDate} onOpenGear={onOpenGear} />
+            <RackSheet key={rack.id} show={show} rack={rack} date={printDate} flows={flows} onOpenGear={onOpenGear} />
           ))}
         </div>
       )}

@@ -116,7 +116,7 @@ export function diffShows(a: Show, b: Show): Patch {
   return patch
 }
 
-function applyFields<T extends object>(item: T, set: Fields): T {
+export function applyFields<T extends object>(item: T, set: Fields): T {
   const next = { ...(item as Fields) }
   for (const [key, value] of Object.entries(set)) {
     if (value === undefined) delete next[key]

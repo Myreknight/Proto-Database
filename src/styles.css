@@ -366,7 +366,7 @@ table.grid {
   border-bottom: 1px solid var(--border);
   background: var(--surface-2);
   position: sticky;
-  top: 57px;
+  top: var(--toolbar-h, 57px);
   z-index: 1;
 }
 
@@ -3013,6 +3013,32 @@ button.add-unit {
   gap: 8px;
 }
 
+/* Options never spill over the buttons: a picker shrinks to fit, and in a narrow window
+   the buttons take their own line, still at the right. */
+.print-bar-options .inline-select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.print-bar-options .inline-select select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 900px) {
+  .print-bar {
+    flex-wrap: wrap;
+  }
+
+  .print-bar-options {
+    flex-basis: 100%;
+  }
+
+  .print-bar-actions {
+    margin-left: auto;
+  }
+}
+
 .print-bar .segmented {
   margin-bottom: 0;
 }
@@ -3434,4 +3460,373 @@ button.add-unit {
 .dialog-actions .grow {
   flex: 1;
   align-self: center;
+}
+
+/* Card slots in a console or I/O rack, and the slot fields on a model */
+
+.card-slots {
+  list-style: none;
+  margin: 4px 0 10px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.card-slots li {
+  display: grid;
+  grid-template-columns: minmax(56px, max-content) 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding: 5px 10px;
+  font-size: 13px;
+}
+
+.card-slots li + li {
+  border-top: 1px solid var(--border);
+}
+
+.card-slots li.clash {
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
+}
+
+.card-slot-name {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.card-slot-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.card-slot-body select {
+  max-width: 100%;
+}
+
+.card-where {
+  margin: 0 0 8px;
+}
+
+table.models input.slots {
+  width: 150px;
+}
+
+table.models input.card-for {
+  width: 70px;
+}
+
+/* A bundle's extensions, each with its length and a way to take it off */
+
+.bundle-exts {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.bundle-exts li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+}
+
+.bundle-exts li + li {
+  border-top: 1px solid var(--border);
+}
+
+.bundle-exts input {
+  width: 70px;
+}
+
+/* Show Setup: which roles the show uses, and roles it adds */
+
+.role-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0 0 10px;
+}
+
+.role-label.custom-role {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.role-label.custom-role input {
+  min-width: 0;
+  width: 100%;
+  font-weight: 600;
+}
+
+button.add-person.add-role {
+  margin: 6px 0 8px;
+}
+
+/* Who's here: faces by the Shared chip, and a dot by each member in Members */
+
+.presence-bar {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 2px;
+  border: none;
+  background: none;
+}
+
+.presence-bar:hover:not(:disabled) {
+  background: none;
+}
+
+.presence-face {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-left: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--bg);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.presence-face:first-child {
+  margin-left: 0;
+}
+
+.presence-face.more {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.presence-dot {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+}
+
+.presence-dot.here {
+  border-color: transparent;
+}
+
+.presence-text {
+  display: block;
+}
+
+.presence-text.here {
+  color: var(--accent);
+}
+
+/* Changes to decide: the chip in the top bar, and the list of conflicts */
+
+.conflict-chip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 12%, var(--surface));
+  font-weight: 600;
+}
+
+.conflicts-dialog {
+  width: 620px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+
+.conflict-all {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.conflict-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.conflict-record {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+
+.conflict-record-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.conflict-row + .conflict-row {
+  border-top: 1px dashed var(--border);
+}
+
+.conflict-row {
+  padding: 6px 0 2px;
+}
+
+.conflict-row p {
+  margin: 2px 0 6px;
+}
+
+.conflict-spot {
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.conflict-sides {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.conflict-side {
+  flex: 1 1 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  padding: 6px 10px;
+  min-width: 0;
+}
+
+.conflict-side.theirs {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+}
+
+.conflict-value {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.conflict-changes {
+  margin: 0 0 6px;
+  padding-left: 18px;
+}
+
+/* Gear lists: Category, List and Qty side by side on a unit */
+.row2.file-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 64px;
+}
+
+/* Changing several units at once: tick boxes in the gear table, and the bar over it */
+
+.grid .pick {
+  width: 28px;
+  padding-right: 0;
+  cursor: default;
+}
+
+.grid .pick input {
+  margin: 0;
+  vertical-align: middle;
+}
+
+.grid tbody tr.picked {
+  background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+}
+
+.batch-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  flex-basis: 100%;
+  padding: 8px 12px;
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: var(--radius);
+}
+
+.batch-count {
+  display: flex;
+  flex-direction: column;
+  align-self: center;
+  min-width: 90px;
+}
+
+.batch-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.batch-field select,
+.batch-field input {
+  width: 150px;
+}
+
+.batch-input {
+  display: flex;
+  gap: 4px;
+}
+
+.batch-fields {
+  position: relative;
+  align-self: center;
+}
+
+.batch-fields summary {
+  cursor: pointer;
+  padding: 4px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  list-style: none;
+}
+
+.batch-fields summary::-webkit-details-marker {
+  display: none;
+}
+
+.batch-fields summary::after {
+  content: ' ▾';
+}
+
+.batch-fields-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.18);
+  white-space: nowrap;
+}
+
+.batch-fields-menu label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The gear list split by list */
+.pull-list + .pull-list {
+  margin-top: 28px;
+}
+
+.pull-list > h2 {
+  margin: 4px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--text);
+  break-after: avoid;
 }

@@ -93,6 +93,9 @@ export function GearModelsView({ show, update, toolbar, onAdded }: Props) {
       categoryId: null,
       ru: null,
       halfWidth: false,
+      slots: '',
+      card: '',
+      cardNumbering: 'slot',
       ports: '',
       notes: '',
     }
@@ -205,6 +208,8 @@ export function GearModelsView({ show, update, toolbar, onAdded }: Props) {
               <th>Category</th>
               <th className="num">RU</th>
               <th title="Half the rack's width, so two sit side by side">Half</th>
+              <th title="Card slots this model has, e.g. SD In 1-7, SD Out 1-7">Slots</th>
+              <th title="If it's a card: the kind of slot it fits (SD In, RY, HY…)">Card for</th>
               <th>Ports</th>
               <th>Notes</th>
               <th className="num">Units</th>
@@ -264,6 +269,23 @@ export function GearModelsView({ show, update, toolbar, onAdded }: Props) {
                       checked={m.halfWidth}
                       aria-label="Half width"
                       onChange={(e) => patchModel(m.id, { halfWidth: e.target.checked })}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      className="slots"
+                      value={m.slots}
+                      aria-label="Card slots"
+                      onChange={(e) => patchModel(m.id, { slots: e.target.value })}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      className="card-for"
+                      value={m.card}
+                      aria-label="Card for which slots"
+                      title={m.card.trim() ? (m.cardNumbering === 'continue' ? 'Ports count on through the slots' : 'Ports named by slot') : undefined}
+                      onChange={(e) => patchModel(m.id, { card: e.target.value })}
                     />
                   </td>
                   <td>

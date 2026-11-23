@@ -9,7 +9,7 @@ This is the version being tested for working together. The everyday version, whe
 - Shows on your own device work the same as always: saved in your browser, and as `.protodb.json` files from the File menu. Nothing is uploaded unless you share a show.
 - **Sign in** (Google, or an email and password) to work on shared shows. A shared show lives online, and only the people its owner invites can open it.
 
-**New here? Read the [tips and shortcuts](TIPS.md)**, especially [Working together](TIPS.md#working-together).
+**New here? Start with [Working together](TIPS.md#working-together)**: signing in, sharing a show, inviting people, how syncing works, working offline, and what happens when two people change the same thing. The rest of the [tips and shortcuts](TIPS.md) cover the app itself. The same guide is in the app under **?** at the top right.
 
 ## Feedback and feature requests
 

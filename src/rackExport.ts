@@ -5,6 +5,7 @@ import { gearLabel, gearRu, rackGear } from './gear'
 import { fitText, pdfBytes, PdfPage, type Rgb } from './pdf'
 import { frontRowsUsed, placedIn, rackProblems, topOf } from './racking'
 import { steckSummary } from './stecks'
+import { loadViewSetting, storeViewSetting } from './sorting'
 import type { Rack, Show } from './types'
 
 const today = () => new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
@@ -181,7 +182,7 @@ function header(page: PdfPage, show: Show, rack: Rack, date: string, what = 'Rac
   })
 }
 
-function rackPages(show: Show, rack: Rack, date: string): PdfPage[] {
+function rackPages(show: Show, rack: Rack, date: string, flows: boolean): PdfPage[] {
   const top = MARGIN + 44
   const bodyH = PAGE_H - top - MARGIN
   const contentW = PAGE_W - MARGIN * 2
@@ -198,8 +199,9 @@ function rackPages(show: Show, rack: Rack, date: string): PdfPage[] {
     rest = partsTable(more, rest, MARGIN, top, contentW, bodyH)
     pages.push(more)
   }
-  // Then how cables run in and out of the rack, if any are linked to its gear.
-  const flow = rackFlow(show, rack)
+  // Then how cables run in and out of the rack, if any are linked to its gear (and flows
+  // are wanted).
+  const flow = flows ? rackFlow(show, rack) : null
   if (flow) {
     const flowPage = new PdfPage(PAGE_W, PAGE_H)
     header(flowPage, show, rack, date, 'Rack Flow')
@@ -209,11 +211,16 @@ function rackPages(show: Show, rack: Rack, date: string): PdfPage[] {
   return pages
 }
 
+// Whether rack prints and PDFs include each rack's flow page, remembered per viewer.
+const PRINT_KEY = 'proto-database:rack-print'
+export const loadRackPrint = () => loadViewSetting(PRINT_KEY, { flows: true })
+export const storeRackPrint = (settings: { flows: boolean }) => storeViewSetting(PRINT_KEY, settings)
+
 // The PDF for some racks, one after another.
-export function racksPdf(show: Show, racks: Rack[], date?: string): Uint8Array {
+export function racksPdf(show: Show, racks: Rack[], date?: string, flows = loadRackPrint().flows): Uint8Array {
   const when = date || today()
   const title = racks.length === 1 ? `${show.name} · ${racks[0].name}` : `${show.name} · Rack Drawings`
-  return pdfBytes(racks.flatMap((rack) => rackPages(show, rack, when)), title)
+  return pdfBytes(racks.flatMap((rack) => rackPages(show, rack, when, flows)), title)
 }
 
 export function downloadRackPdf(show: Show, rack: Rack, date?: string): void {

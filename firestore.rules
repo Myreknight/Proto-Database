@@ -105,6 +105,22 @@ service cloud.firestore {
 
       allow delete: if isOwner(resource.data);
 
+      // Who's here: members see everyone's check-ins; each person writes only their own
+      // (one per open window, named for their account), and the owner can clear any when
+      // deleting the show.
+      match /presence/{sessionId} {
+        function inShow() {
+          return isMember(get(/databases/$(database)/documents/shows/$(showId)).data);
+        }
+        allow read: if inShow();
+        allow create, update: if inShow()
+          && request.resource.data.uid == request.auth.uid
+          && sessionId.matches(request.auth.uid + '_.+');
+        allow delete: if inShow()
+          && (resource.data.uid == request.auth.uid
+            || isOwner(get(/databases/$(database)/documents/shows/$(showId)).data));
+      }
+
       // Everything in a show: its cables, bundles, racks, gear, models, cable types,
       // checklist entries, and the order of its lists. Members only.
       match /{kind}/{itemId} {

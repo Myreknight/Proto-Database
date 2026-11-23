@@ -17,7 +17,8 @@ import { decode, encode } from './firebase'
 //   shows/{id}/meta/order      each list's order
 //   shows/{id}/{kind}/{itemId} each cable, bundle, rack… and checklist entry
 // Field changes are written as just those fields, so two people editing different fields
-// of one cable both land.
+// of one cable both land. Watchers hear about the connection too (includeMetadataChanges),
+// so the session knows when what it has is up to date with the server.
 
 // Firestore takes up to 500 writes at once; a whole show goes up in several.
 const BATCH = 450
@@ -31,25 +32,34 @@ export function firestoreBackend(db: Firestore, showId: string): Backend {
     watchShow(cb, onError) {
       return onSnapshot(
         showRef,
+        { includeMetadataChanges: true },
         (snap) => {
           const data = snap.data()
-          cb(data ? { name: String(data.name ?? ''), info: decode(data.info) as ShowInfo } : null)
+          cb(data ? { name: String(data.name ?? ''), info: decode(data.info) as ShowInfo } : null, !snap.metadata.fromCache)
         },
         onError,
       )
     },
     watchOrder(cb, onError) {
-      return onSnapshot(orderRef, (snap) => cb((decode(snap.data() ?? {}) ?? {}) as Record<string, string[]>), onError)
+      return onSnapshot(
+        orderRef,
+        { includeMetadataChanges: true },
+        (snap) => cb((decode(snap.data() ?? {}) ?? {}) as Record<string, string[]>, !snap.metadata.fromCache),
+        onError,
+      )
     },
     watchItems(kind, cb, onError) {
       return onSnapshot(
         collection(db, 'shows', showId, kind),
+        { includeMetadataChanges: true },
         (snap) =>
           cb(
+            // Only real changes; a write being confirmed changes nothing here.
             snap.docChanges().map((change) => ({
               id: change.doc.id,
               data: change.type === 'removed' ? null : (decode(change.doc.data()) as Record<string, unknown>),
             })),
+            !snap.metadata.fromCache,
           ),
         onError,
       )
