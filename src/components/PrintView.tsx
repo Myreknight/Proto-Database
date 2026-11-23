@@ -1,6 +1,7 @@
 import type { KeyboardEvent } from 'react'
 import type { Update } from '../App'
 import { PRINT_DOCS, type PrintDoc } from '../printDocs'
+import type { PatchReport } from '../gear'
 import type { Show } from '../types'
 import { BundleSheetsView } from './BundleSheetsView'
 import { ChecklistsView } from './ChecklistsView'
@@ -8,9 +9,11 @@ import { GearListView } from './GearListView'
 import { LabelsView } from './LabelsView'
 import { PullListView } from './PullListView'
 import { RackDrawingsView } from './RackDrawingsView'
+import { SwitchLabelsView } from './SwitchLabelsView'
 
 interface Props {
   show: Show
+  patches: PatchReport
   update: Update
   doc: PrintDoc
   onDoc: (doc: PrintDoc) => void
@@ -22,7 +25,7 @@ const ALL = PRINT_DOCS.flatMap((g) => g.docs)
 
 // Everything the show prints, in one place: pick a document on the left, set it up and
 // print it on the right.
-export function PrintView({ show, update, doc, onDoc, onOpenBundle, onOpenGear }: Props) {
+export function PrintView({ show, patches, update, doc, onDoc, onOpenBundle, onOpenGear }: Props) {
   // Up and down step through the documents, like a menu.
   const onKey = (e: KeyboardEvent<HTMLElement>) => {
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
@@ -62,6 +65,7 @@ export function PrintView({ show, update, doc, onDoc, onOpenBundle, onOpenGear }
         {doc === 'bundle-sheets' && <BundleSheetsView show={show} onOpenBundle={onOpenBundle} />}
         {doc === 'gear-list' && <GearListView show={show} />}
         {doc === 'rack-drawings' && <RackDrawingsView show={show} onOpenGear={onOpenGear} />}
+        {doc === 'switch-labels' && <SwitchLabelsView show={show} patches={patches} />}
       </div>
     </div>
   )

@@ -3583,3 +3583,46 @@ button.add-person.add-role {
   border-bottom: 2px solid var(--text);
   break-after: avoid;
 }
+
+/* Network switches: the switch page, the VLAN list, and the printed port labels */
+.switch-title { margin: 0; font-size: 18px; }
+.switch-body, .network-body { padding: 0 16px 24px; display: flex; flex-direction: column; gap: 14px; }
+.switch-drawing { cursor: default; }
+.switch-svg { width: 100%; }
+.switch-svg svg { width: 100%; height: auto; display: block; }
+.switch-ports input:not([type]), .switch-ports .tagged-input { width: 100%; min-width: 90px; }
+.switch-ports .wide-cell { min-width: 200px; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: middle; border: 1px solid var(--border-strong); }
+.vlan-chip { display: inline-block; min-width: 22px; padding: 0 5px; margin-right: 3px; border-radius: 4px; color: #fff; font-size: 11px; text-align: center; }
+.vlan-id { width: 70px; }
+.network-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; }
+.switch-layout-fields, .switch-style-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.switch-style-checks { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 0; }
+.switch-label-style { margin: 0 16px 12px; }
+.switch-labels { padding: 0 16px 24px; }
+.switch-label-item { margin-bottom: 6mm; break-inside: avoid; }
+.switch-label-item svg { max-width: 100%; height: auto; }
+.switch-check { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+@media print {
+  .switch-label-style { display: none !important; }
+  .switch-label-item svg { max-width: none !important; }
+}
+.switch-body .table-wrap {
+  padding: 0;
+}
+.area-fields {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.area-fields input {
+  width: 84px;
+}
+.area-fields button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.print-bar .units-toggle {
+  margin-bottom: 0;
+}

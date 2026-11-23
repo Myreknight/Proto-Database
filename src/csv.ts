@@ -11,7 +11,7 @@ export const CABLE_TYPE_HEADERS = [
   'Notes',
 ]
 
-export const GEAR_MODEL_HEADERS = ['Manufacturer', 'Model', 'Category', 'RU', 'Width', 'Slots', 'Card', 'Numbering', 'Ports', 'Notes']
+export const GEAR_MODEL_HEADERS = ['Manufacturer', 'Model', 'Category', 'RU', 'Width', 'Slots', 'Card', 'Numbering', 'Switch', 'SFP', 'Ports', 'Notes']
 
 export interface GearModelRow {
   manufacturer: string
@@ -22,6 +22,9 @@ export interface GearModelRow {
   slots: string
   card: string
   numbering: string
+  // A network switch: "1 row" or "2 rows" (blank: not a switch), and its SFP ports.
+  switch: string
+  sfp: string
   ports: string
   notes: string
 }
@@ -54,6 +57,8 @@ const MODEL_ALIASES: Record<keyof GearModelRow, string[]> = {
   slots: ['slots', 'card slots', 'slot'],
   card: ['card', 'card type', 'card for', 'fits slot', 'slot type'],
   numbering: ['numbering', 'card numbering', 'port numbering'],
+  switch: ['switch', 'network switch', 'switch rows'],
+  sfp: ['sfp', 'sfp ports'],
   ports: ['ports', 'port list', 'i/o', 'io', 'connections'],
   notes: ['notes', 'note', 'comments', 'comment', 'remarks'],
 }

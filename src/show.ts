@@ -4,6 +4,7 @@ import { softenColor } from './colors'
 import { cableTypesFromCsv, gearModelsFromCsv, parseHalfWidth, parseNumbering, parseRu, type GearModelRow } from './csv'
 import { newId } from './ids'
 import { gearMatcher } from './match'
+import { defaultVlans, layoutFromCsv, normalizeLayout, normalizeSwitchPorts, normalizeVlans } from './network'
 import { placeUnplaced } from './racking'
 import { migrateSteckRails, normalizeSteck } from './stecks'
 import {
@@ -53,6 +54,7 @@ export function seedGearModels(categories: GearCategory[]): GearModel[] {
     slots: r.slots,
     card: r.card,
     cardNumbering: parseNumbering(r.numbering),
+    switchLayout: layoutFromCsv(r),
     ports: r.ports,
     notes: r.notes,
   }))
@@ -75,6 +77,7 @@ function emptyInfo(): ShowInfo {
     hiddenRoles: [],
     customRoles: [],
     gearLists: defaultGearLists(),
+    vlans: defaultVlans(),
   }
 }
 
@@ -108,6 +111,7 @@ function normalizeInfo(raw: Partial<ShowInfo> | undefined): ShowInfo {
         names: Array.isArray(r.names) ? r.names.filter((n) => typeof n === 'string') : [],
       }))
   }
+  info.vlans = normalizeVlans(raw.vlans)
   if (Array.isArray(raw.gearLists)) {
     const seen = new Set<string>()
     info.gearLists = raw.gearLists
@@ -257,6 +261,7 @@ export function normalizeShow(raw: unknown): Show {
         ? { gearId: g.host.gearId, slot: g.host.slot }
         : null,
     listId: listOf(g.listId),
+    switchPorts: normalizeSwitchPorts(g.switchPorts),
   }))
   // A card whose unit is gone stays on the list as a spare.
   const gearIds = new Set(gear.map((g) => g.id))
@@ -274,6 +279,7 @@ export function normalizeShow(raw: unknown): Show {
           slots: typeof m.slots === 'string' ? m.slots : '',
           card: typeof m.card === 'string' ? m.card : '',
           cardNumbering: m.cardNumbering === 'continue' ? ('continue' as const) : ('slot' as const),
+          switchLayout: normalizeLayout(m.switchLayout),
           ports: m.ports ?? '',
           notes: m.notes ?? '',
         }))

@@ -33,6 +33,7 @@ interface Props {
   onSelect: (id: string | null) => void
   onOpenCable: (id: string) => void
   onOpenRack: (id: string) => void
+  onOpenSwitch: (id: string) => void
   onOpenPrint: () => void
 }
 
@@ -94,7 +95,7 @@ function TriCheckbox({ checked, some, label, onToggle }: { checked: boolean; som
   )
 }
 
-export function GearView({ show, patches, update, selectedId, onSelect, onOpenCable, onOpenRack, onOpenPrint }: Props) {
+export function GearView({ show, patches, update, selectedId, onSelect, onOpenCable, onOpenRack, onOpenSwitch, onOpenPrint }: Props) {
   const [query, setQuery] = useState('')
   const [view, setView] = useState<View>(() => {
     const stored = loadViewSetting<View>(VIEW_KEY, { mode: 'units', group: 'category', sort: null })
@@ -482,6 +483,7 @@ export function GearView({ show, patches, update, selectedId, onSelect, onOpenCa
           onOpenCable={onOpenCable}
           onOpenRack={onOpenRack}
           onOpenGear={onSelect}
+          onOpenSwitch={onOpenSwitch}
         />
       )}
 

@@ -7,12 +7,15 @@ import { FileMenu } from './components/FileMenu'
 import { GearView } from './components/GearView'
 import { HelpDialog } from './components/HelpDialog'
 import { PrintView } from './components/PrintView'
+import { NetworkView } from './components/NetworkView'
 import { RacksView } from './components/RacksView'
 import { ShowSetupView } from './components/ShowSetupView'
 import { MushroomIcon, PixelHud } from './components/PixelDecor'
 import { AmpDisplay, AmpTitleBar } from './components/WinampDecor'
 import { downloadText, pickTextFile, safeFilename } from './files'
 import { gearNames, patchReport } from './gear'
+import { switchesOf } from './network'
+import { pickSwitchLabel } from './switchLabels'
 import { historyReducer, initHistory, now, typingField } from './history'
 import { loadPrintDoc, printDocForTab, storePrintDoc, type PrintDoc } from './printDocs'
 import {
@@ -29,7 +32,7 @@ import type { Show } from './types'
 
 export type Update = (fn: (show: Show) => Show) => void
 
-type Tab = 'setup' | 'cables' | 'bundles' | 'racks' | 'gear' | 'checks' | 'print' | 'types'
+type Tab = 'setup' | 'cables' | 'bundles' | 'racks' | 'gear' | 'network' | 'checks' | 'print' | 'types'
 
 // Whether a key press is going into a text field (where N is just a letter).
 function isTyping(target: EventTarget | null): boolean {
@@ -60,6 +63,7 @@ export default function App() {
   const [selectedCableId, setSelectedCableId] = useState<string | null>(null)
   const [selectedBundleId, setSelectedBundleId] = useState<string | null>(null)
   const [selectedRackId, setSelectedRackId] = useState<string | null>(null)
+  const [selectedSwitchId, setSelectedSwitchId] = useState<string | null>(null)
   const [selectedGearId, setSelectedGearId] = useState<string | null>(null)
   const [skin, setSkin] = useState<Skin>(loadSkin)
   const [helpOpen, setHelpOpen] = useState(false)
@@ -217,6 +221,11 @@ export default function App() {
     setTab('racks')
   }
 
+  const openSwitch = (id: string) => {
+    setSelectedSwitchId(id)
+    setTab('network')
+  }
+
   // A steck isn't on the Gear tab, so opening one goes to its rack.
   const openGear = (id: string) => {
     const steck = show.gear.find((g) => g.id === id && g.steck)
@@ -252,6 +261,7 @@ export default function App() {
       flags: patches.issues,
       flagTitle: `${patches.issues} patch warning(s): ports a model doesn't list, or two cables on one port`,
     },
+    { id: 'network', label: 'Network', count: switchesOf(show).length },
     { id: 'checks', label: 'Checklists' },
     { id: 'print', label: 'Print' },
     { id: 'types', label: 'Cable Types', count: show.cableTypes.length },
@@ -376,7 +386,22 @@ export default function App() {
             onSelect={setSelectedGearId}
             onOpenCable={openCable}
             onOpenRack={openRack}
+            onOpenSwitch={openSwitch}
             onOpenPrint={() => openPrint('gear-list')}
+          />
+        )}
+        {tab === 'network' && (
+          <NetworkView
+            show={show}
+            patches={patches}
+            update={update}
+            selectedId={selectedSwitchId}
+            onSelect={setSelectedSwitchId}
+            onOpenGear={openGear}
+            onPrint={(id) => {
+              pickSwitchLabel(id)
+              openPrint('switch-labels')
+            }}
           />
         )}
         {tab === 'bundles' && (
@@ -395,6 +420,7 @@ export default function App() {
         {tab === 'print' && (
           <PrintView
             show={show}
+            patches={patches}
             update={update}
             doc={printDoc}
             onDoc={setPrintDoc}

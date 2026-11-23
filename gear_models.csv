@@ -1,97 +1,123 @@
-Manufacturer,Model,Category,RU,Width,Slots,Card,Numbering,Ports,Notes
-DiGiCo,Quantum 7,Consoles,,,DMI 1-2,,,,"Draft, check the spec sheet"
-DiGiCo,Quantum 338,Consoles,,,DMI 1-2,,,,"Draft, check the spec sheet"
-DiGiCo,SD7,Consoles,,,,,,,
-DiGiCo,SD-Rack,Consoles,,,"SD In 1-7, SD Out 1-7",,,"Optics A-B, MADI A-B","Draft, check the spec sheet. Input and I/O cards go in the In slots, filling from slot 1; output cards in the Out slots"
-DiGiCo,SD-MiNi Rack,Consoles,4,,,,,"In 1-32, Out 1-16, MADI A-B","Draft, check the spec sheet"
-Yamaha,CL5,Consoles,,,MY 1-3,,,"Omni In 1-8, Omni Out 1-8, Dante Pri, Dante Sec","Draft, check the spec sheet"
-Yamaha,Rio3224-D2,Consoles,5,,,,,"In 1-32, Out 1-16, AES Out 1-4, Dante Pri, Dante Sec","Draft, check the spec sheet"
-Yamaha,Rio1608-D2,Consoles,3,,,,,"In 1-16, Out 1-8, Dante Pri, Dante Sec","Draft, check the spec sheet"
-Yamaha,RPio622,Consoles,10,,"RY 1-6, MY 1-2, HY 1-2",,,,"Draft, check the spec sheet. RIVAGE I/O rack. HY 1 is for a TWINLANe card only (256 in/out); HY 2 takes Dante, MADI or WSG-HY128 (128 in/out)"
-Yamaha,RPio222,Consoles,5,,"RY 1-2, MY 1-2, HY 1-2",,,,"Draft, check the spec sheet. Compact RIVAGE I/O rack. HY 1 is for a TWINLANe card only; HY 2 takes Dante, MADI or WSG-HY128"
-Yamaha,CS-R10,Consoles,,,MY 1-2,,,"Omni In 1-8, Omni Out 1-8, AES In 1-4, AES Out 1-4, Talkback, Console Network 1-2","Draft, check the spec sheet. RIVAGE PM10 control surface; pairs with a DSP-RX-EX (or DSP-R10). Yamaha’s manual lists 4 AES in/out, its product page 8. Console Network jack names are a guess"
-Yamaha,CS-R10-S,Consoles,,,MY 1-2,,,"Omni In 1-8, Omni Out 1-8, Talkback, Console Network 1-2","Draft, check the spec sheet. RIVAGE PM10 compact control surface. Console Network jack names are a guess"
-Yamaha,CS-R5,Consoles,,,MY 1-2,,,"Omni In 1-8, Omni Out 1-8, AES In 1-4, AES Out 1-4, Talkback, Console Network 1-2","Draft, check the spec sheet. RIVAGE PM5 control surface; pairs with a DSP-RX-EX. Console Network jack names are a guess"
-Yamaha,CS-R3,Consoles,,,MY 1-2,,,"Omni In 1-8, Omni Out 1-8, Talkback, Console Network 1-2","Draft, check the spec sheet. RIVAGE PM3 control surface; pairs with a DSP-RX. Console Network jack names are a guess"
-Yamaha,CSD-R7,Consoles,,,"HY 1-3, MY 1-2",,,"Omni In 1-8, Omni Out 1-8, AES In 1-4, AES Out 1-4, Talkback, Word Clock In, Word Clock Out, Network, Network PC, TC In, GPI, MIDI In, MIDI Out","Draft, check the spec sheet. RIVAGE PM7: surface and DSP in one. TWINLANe card only in HY 1; multitrack recording in HY 3"
-Yamaha,DSP-RX,Consoles,,,"HY 1-4, MY 1-2",,,"To Console 1-2, Word Clock In, Word Clock Out, Network, Network PC, TC In, GPI, MIDI In, MIDI Out","Draft, check the spec sheet. RIVAGE DSP engine (PM3). TWINLANe card only in HY 1 or 2; multitrack recording in HY 4"
-Yamaha,DSP-RX-EX,Consoles,,,"HY 1-4, MY 1-2",,,"To Console 1-2, Word Clock In, Word Clock Out, Network, Network PC, TC In, GPI, MIDI In, MIDI Out","Draft, check the spec sheet. RIVAGE DSP engine (PM10, PM5). TWINLANe card only in HY 1 or 2; multitrack recording in HY 4"
-Yamaha,DSP-R10,Consoles,5,,"HY 1-4, MY 1-2",,,"To Console 1-2, Word Clock In, Word Clock Out, Network, Network PC, TC In, GPI, MIDI In, MIDI Out","Draft, check the spec sheet. Original RIVAGE PM10 DSP engine. TWINLANe card only in HY 1 or 2; multitrack recording in HY 4"
-Yamaha,DM7,Consoles,,,PY 1,,,,"Draft, check the spec sheet"
-Apple,Mac mini,Playback & Computers,,,,,,,Ports vary by year
-Focusrite,RedNet A16R MkII,Playback & Computers,1,,,,,"In DB25 A, In DB25 B, Out DB25 A, Out DB25 B, Dante Pri, Dante Sec","Draft, check the spec sheet"
-Meyer Sound,GALAXY 816,Processing,1,,,,,"In 1-8, Out 1-16, AVB 1-2","Draft, check the spec sheet"
-Meyer Sound,GALAXY 408,Processing,1,,,,,"In 1-4, Out 1-8, AVB 1-2","Draft, check the spec sheet"
-d&b,D80,Amplifiers,2,,,,,"In A-D, Out A-D, Out NL8, Net 1-2","Draft, check the spec sheet"
-d&b,D40,Amplifiers,2,,,,,"In A-D, Out A-D, Out NL8, Net 1-2","Draft, check the spec sheet"
-d&b,D20,Amplifiers,2,,,,,"In A-D, Out A-D, Out NL8, Net 1-2","Draft, check the spec sheet"
-L-Acoustics,LA12X,Amplifiers,2,,,,,"In 1-4, AES In 1-2, Out 1-4, Out NL8, Net 1-2","Draft, check the spec sheet"
-d&b,E6,Speakers,,,,,,"In, Link","Draft, check the spec sheet"
-d&b,E8,Speakers,,,,,,"In, Link","Draft, check the spec sheet"
-d&b,Y10P,Speakers,,,,,,"In, Link","Draft, check the spec sheet"
-d&b,V8,Speakers,,,,,,"In, Link","Draft, check the spec sheet"
-d&b,V-SUB,Speakers,,,,,,"In, Link","Draft, check the spec sheet"
-d&b,Y-SUB,Speakers,,,,,,"In, Link","Draft, check the spec sheet"
-L-Acoustics,Kara II,Speakers,,,,,,"In, Link","Draft, check the spec sheet"
-L-Acoustics,X8,Speakers,,,,,,"In, Link","Draft, check the spec sheet"
-Meyer Sound,UPJ-1P,Speakers,,,,,,"Input, Loop, AC In, AC Loop","Draft, check the spec sheet"
-Meyer Sound,UPA-1P,Speakers,,,,,,"Input, Loop, AC In, AC Loop","Draft, check the spec sheet"
-Meyer Sound,900-LFC,Speakers,,,,,,"Input, Loop, AC In, AC Loop","Draft, check the spec sheet"
-Shure,AD4Q,Wireless,1,,,,,"Out 1-4, AES Out 1-2, Net 1-4, Antenna A, Antenna B, Cascade A, Cascade B","Draft, check the spec sheet"
-Shure,AD4D,Wireless,1,,,,,"Out 1-2, AES Out, Net 1-4, Antenna A, Antenna B, Cascade A, Cascade B","Draft, check the spec sheet"
-Shure,ULXD4Q,Wireless,1,,,,,"Out 1-4, Mix Out, Net 1-2, Antenna A, Antenna B, Cascade A, Cascade B","Draft, check the spec sheet"
-Shure,ADX1M,Wireless,,,,,,,
-Sennheiser,EM 6000,Wireless,1,,,,,"Out 1-2, AES Out, Dante 1-2, Antenna A, Antenna B, Cascade A, Cascade B, Word Clock In","Draft, check the spec sheet"
-Sennheiser,SK 6212,Wireless,,,,,,,
-Wisycom,MRK980,Wireless,,,,,,,
-Wisycom,MTP60,Wireless,,,,,,,
-DPA,4061,Microphones,,,,,,,
-DPA,6061,Microphones,,,,,,,
-Countryman,B3,Microphones,,,,,,,
-Shure,SM58,Microphones,,,,,,,
-Shure,Beta 58A,Microphones,,,,,,,
-Shure,P10T,Monitors & IEM,1,,,,,"In 1L, In 1R, In 2L, In 2R, Loop 1L, Loop 1R, Loop 2L, Loop 2R, RF Out, Net","Draft, check the spec sheet"
-Sennheiser,SR 2050 IEM,Monitors & IEM,1,,,,,"In 1L, In 1R, In 2L, In 2R, Loop 1L, Loop 1R, Loop 2L, Loop 2R, Antenna, Net","Draft, check the spec sheet"
-Clear-Com,HelixNet HMS-4X,Comms,1,,,,,,
-Clear-Com,FreeSpeak II Base,Comms,1,,,,,,
-Riedel,Bolero,Comms,,,,,,,
-Marshall,CV503,Video,,,,,,"SDI Out, HDMI Out, Power, Control","Draft, check the spec sheet"
-Blackmagic Design,ATEM Mini Pro,Video,,,,,,"HDMI In 1-4, HDMI Out, Mic 1-2, USB-C, Ethernet","Draft, check the spec sheet"
-Blackmagic Design,Micro Converter SDI to HDMI,Video,,,,,,"SDI In, SDI Loop, HDMI Out, USB Power","Draft, check the spec sheet"
-Luminex,GigaCore 16Xt,Networking,1,,,,,"1-12, SFP 1-4","Draft, check the spec sheet"
-Generic,8-port switch,Networking,1,,,,,1-8,
-Generic,16-port switch,Networking,1,,,,,1-16,
-Generic,24-port switch,Networking,1,,,,,1-24,
-Generic,48-port switch,Networking,1,,,,,1-48,
-Furman,PL-8C,Power,1,,,,,"Front, Rear 1-8","Draft, check the spec sheet"
-Generic,Blank panel 1U,Hardware,1,,,,,,
-Generic,Blank panel 2U,Hardware,2,,,,,,
-Generic,Vent panel 1U,Hardware,1,,,,,,
-Generic,Shelf 1U,Hardware,1,,,,,,
-Generic,Shelf 2U,Hardware,2,,,,,,
-Generic,Drawer 2U,Hardware,2,,,,,,
-Generic,Drawer 3U,Hardware,3,,,,,,
-Middle Atlantic,EB1,Hardware,1,,,,,,1U blank panel
-Middle Atlantic,EB2,Hardware,2,,,,,,2U blank panel
-Middle Atlantic,VT1,Hardware,1,,,,,,1U vent panel
-Middle Atlantic,VT2,Hardware,2,,,,,,2U vent panel
-Middle Atlantic,U1,Hardware,1,,,,,,1U utility shelf
-Middle Atlantic,U1V,Hardware,1,,,,,,1U vented shelf
-Middle Atlantic,U2,Hardware,2,,,,,,2U utility shelf
-Middle Atlantic,D2,Hardware,2,,,,,,2U drawer
-Middle Atlantic,D3,Hardware,3,,,,,,3U drawer
-Middle Atlantic,LBP-1R,Hardware,,,,,,,"Lacing bar, round rod. Check its rack height"
-DiGiCo,SD 192kHz Mic/Line Input Card,Cards,,,,SD In,Count on,In 1-8,"Draft, check the spec sheet"
-DiGiCo,SD 192kHz Analogue Output Card,Cards,,,,SD Out,Count on,Out 1-8,"Draft, check the spec sheet"
-DiGiCo,SD AES/EBU I/O Card,Cards,,,,SD In,Per slot,"AES In 1-4, AES Out 1-4","Draft, check the spec sheet"
-DiGiCo,SD Dante Card,Cards,,,,SD In,Per slot,"Dante Pri, Dante Sec","Draft, check the spec sheet"
-DiGiCo,DMI-DANTE64,Cards,,,,DMI,Per slot,"Dante Pri, Dante Sec","Draft, check the spec sheet. 64 x 64 over the network"
-DiGiCo,DMI-MADI-B,Cards,,,,DMI,Per slot,"MADI In, MADI Out","Draft, check the spec sheet"
-Yamaha,RY16-ML-SILK,Cards,,,,RY,Per slot,In 1-16,"Draft, check the spec sheet"
-Yamaha,RY16-DA,Cards,,,,RY,Per slot,Out 1-16,"Draft, check the spec sheet"
-Yamaha,RY16-AE,Cards,,,,RY,Per slot,"AES In 1-8, AES Out 1-8","Draft, check the spec sheet"
-Yamaha,HY144-D,Cards,,,,HY,Per slot,"Dante Pri, Dante Sec","Draft, check the spec sheet"
-Yamaha,HY256-TL,Cards,,,,HY,Per slot,"TWINLANe In, TWINLANe Out","Draft, check the spec sheet"
-Yamaha,HY128-MD,Cards,,,,HY,Per slot,"MADI In, MADI Out","Draft, check the spec sheet"
-Yamaha,Dante-MY16-AUD2,Cards,,,,MY,Per slot,"Dante Pri, Dante Sec","Draft, check the spec sheet"
-Yamaha,PY64-D,Cards,,,,PY,Per slot,"Dante Pri, Dante Sec","Draft, check the spec sheet"
+Manufacturer,Model,Category,RU,Width,Slots,Card,Numbering,Switch,SFP,Ports,Notes
+DiGiCo,Quantum 7,Consoles,,,DMI 1-2,,,,,,"Draft, check the spec sheet"
+DiGiCo,Quantum 338,Consoles,,,DMI 1-2,,,,,,"Draft, check the spec sheet"
+DiGiCo,SD7,Consoles,,,,,,,,,
+DiGiCo,SD-Rack,Consoles,,,"SD In 1-7, SD Out 1-7",,,,,"Optics A-B, MADI A-B","Draft, check the spec sheet. Input and I/O cards go in the In slots, filling from slot 1; output cards in the Out slots"
+DiGiCo,SD-MiNi Rack,Consoles,4,,,,,,,"In 1-32, Out 1-16, MADI A-B","Draft, check the spec sheet"
+Yamaha,CL5,Consoles,,,MY 1-3,,,,,"Omni In 1-8, Omni Out 1-8, Dante Pri, Dante Sec","Draft, check the spec sheet"
+Yamaha,Rio3224-D2,Consoles,5,,,,,,,"In 1-32, Out 1-16, AES Out 1-4, Dante Pri, Dante Sec","Draft, check the spec sheet"
+Yamaha,Rio1608-D2,Consoles,3,,,,,,,"In 1-16, Out 1-8, Dante Pri, Dante Sec","Draft, check the spec sheet"
+Yamaha,RPio622,Consoles,10,,"RY 1-6, MY 1-2, HY 1-2",,,,,,"Draft, check the spec sheet. RIVAGE I/O rack. HY 1 is for a TWINLANe card only (256 in/out); HY 2 takes Dante, MADI or WSG-HY128 (128 in/out)"
+Yamaha,RPio222,Consoles,5,,"RY 1-2, MY 1-2, HY 1-2",,,,,,"Draft, check the spec sheet. Compact RIVAGE I/O rack. HY 1 is for a TWINLANe card only; HY 2 takes Dante, MADI or WSG-HY128"
+Yamaha,CS-R10,Consoles,,,MY 1-2,,,,,"Omni In 1-8, Omni Out 1-8, AES In 1-4, AES Out 1-4, Talkback, Console Network 1-2","Draft, check the spec sheet. RIVAGE PM10 control surface; pairs with a DSP-RX-EX (or DSP-R10). Yamaha’s manual lists 4 AES in/out, its product page 8. Console Network jack names are a guess"
+Yamaha,CS-R10-S,Consoles,,,MY 1-2,,,,,"Omni In 1-8, Omni Out 1-8, Talkback, Console Network 1-2","Draft, check the spec sheet. RIVAGE PM10 compact control surface. Console Network jack names are a guess"
+Yamaha,CS-R5,Consoles,,,MY 1-2,,,,,"Omni In 1-8, Omni Out 1-8, AES In 1-4, AES Out 1-4, Talkback, Console Network 1-2","Draft, check the spec sheet. RIVAGE PM5 control surface; pairs with a DSP-RX-EX. Console Network jack names are a guess"
+Yamaha,CS-R3,Consoles,,,MY 1-2,,,,,"Omni In 1-8, Omni Out 1-8, Talkback, Console Network 1-2","Draft, check the spec sheet. RIVAGE PM3 control surface; pairs with a DSP-RX. Console Network jack names are a guess"
+Yamaha,CSD-R7,Consoles,,,"HY 1-3, MY 1-2",,,,,"Omni In 1-8, Omni Out 1-8, AES In 1-4, AES Out 1-4, Talkback, Word Clock In, Word Clock Out, Network, Network PC, TC In, GPI, MIDI In, MIDI Out","Draft, check the spec sheet. RIVAGE PM7: surface and DSP in one. TWINLANe card only in HY 1; multitrack recording in HY 3"
+Yamaha,DSP-RX,Consoles,,,"HY 1-4, MY 1-2",,,,,"To Console 1-2, Word Clock In, Word Clock Out, Network, Network PC, TC In, GPI, MIDI In, MIDI Out","Draft, check the spec sheet. RIVAGE DSP engine (PM3). TWINLANe card only in HY 1 or 2; multitrack recording in HY 4"
+Yamaha,DSP-RX-EX,Consoles,,,"HY 1-4, MY 1-2",,,,,"To Console 1-2, Word Clock In, Word Clock Out, Network, Network PC, TC In, GPI, MIDI In, MIDI Out","Draft, check the spec sheet. RIVAGE DSP engine (PM10, PM5). TWINLANe card only in HY 1 or 2; multitrack recording in HY 4"
+Yamaha,DSP-R10,Consoles,5,,"HY 1-4, MY 1-2",,,,,"To Console 1-2, Word Clock In, Word Clock Out, Network, Network PC, TC In, GPI, MIDI In, MIDI Out","Draft, check the spec sheet. Original RIVAGE PM10 DSP engine. TWINLANe card only in HY 1 or 2; multitrack recording in HY 4"
+Yamaha,DM7,Consoles,,,PY 1,,,,,,"Draft, check the spec sheet"
+Apple,Mac mini,Playback & Computers,,,,,,,,,Ports vary by year
+Focusrite,RedNet A16R MkII,Playback & Computers,1,,,,,,,"In DB25 A, In DB25 B, Out DB25 A, Out DB25 B, Dante Pri, Dante Sec","Draft, check the spec sheet"
+Meyer Sound,GALAXY 816,Processing,1,,,,,,,"In 1-8, Out 1-16, AVB 1-2","Draft, check the spec sheet"
+Meyer Sound,GALAXY 408,Processing,1,,,,,,,"In 1-4, Out 1-8, AVB 1-2","Draft, check the spec sheet"
+d&b,D80,Amplifiers,2,,,,,,,"In A-D, Out A-D, Out NL8, Net 1-2","Draft, check the spec sheet"
+d&b,D40,Amplifiers,2,,,,,,,"In A-D, Out A-D, Out NL8, Net 1-2","Draft, check the spec sheet"
+d&b,D20,Amplifiers,2,,,,,,,"In A-D, Out A-D, Out NL8, Net 1-2","Draft, check the spec sheet"
+L-Acoustics,LA12X,Amplifiers,2,,,,,,,"In 1-4, AES In 1-2, Out 1-4, Out NL8, Net 1-2","Draft, check the spec sheet"
+d&b,E6,Speakers,,,,,,,,"In, Link","Draft, check the spec sheet"
+d&b,E8,Speakers,,,,,,,,"In, Link","Draft, check the spec sheet"
+d&b,Y10P,Speakers,,,,,,,,"In, Link","Draft, check the spec sheet"
+d&b,V8,Speakers,,,,,,,,"In, Link","Draft, check the spec sheet"
+d&b,V-SUB,Speakers,,,,,,,,"In, Link","Draft, check the spec sheet"
+d&b,Y-SUB,Speakers,,,,,,,,"In, Link","Draft, check the spec sheet"
+L-Acoustics,Kara II,Speakers,,,,,,,,"In, Link","Draft, check the spec sheet"
+L-Acoustics,X8,Speakers,,,,,,,,"In, Link","Draft, check the spec sheet"
+Meyer Sound,UPJ-1P,Speakers,,,,,,,,"Input, Loop, AC In, AC Loop","Draft, check the spec sheet"
+Meyer Sound,UPA-1P,Speakers,,,,,,,,"Input, Loop, AC In, AC Loop","Draft, check the spec sheet"
+Meyer Sound,900-LFC,Speakers,,,,,,,,"Input, Loop, AC In, AC Loop","Draft, check the spec sheet"
+Shure,AD4Q,Wireless,1,,,,,,,"Out 1-4, AES Out 1-2, Net 1-4, Antenna A, Antenna B, Cascade A, Cascade B","Draft, check the spec sheet"
+Shure,AD4D,Wireless,1,,,,,,,"Out 1-2, AES Out, Net 1-4, Antenna A, Antenna B, Cascade A, Cascade B","Draft, check the spec sheet"
+Shure,ULXD4Q,Wireless,1,,,,,,,"Out 1-4, Mix Out, Net 1-2, Antenna A, Antenna B, Cascade A, Cascade B","Draft, check the spec sheet"
+Shure,ADX1M,Wireless,,,,,,,,,
+Sennheiser,EM 6000,Wireless,1,,,,,,,"Out 1-2, AES Out, Dante 1-2, Antenna A, Antenna B, Cascade A, Cascade B, Word Clock In","Draft, check the spec sheet"
+Sennheiser,SK 6212,Wireless,,,,,,,,,
+Wisycom,MRK980,Wireless,,,,,,,,,
+Wisycom,MTP60,Wireless,,,,,,,,,
+DPA,4061,Microphones,,,,,,,,,
+DPA,6061,Microphones,,,,,,,,,
+Countryman,B3,Microphones,,,,,,,,,
+Shure,SM58,Microphones,,,,,,,,,
+Shure,Beta 58A,Microphones,,,,,,,,,
+Shure,P10T,Monitors & IEM,1,,,,,,,"In 1L, In 1R, In 2L, In 2R, Loop 1L, Loop 1R, Loop 2L, Loop 2R, RF Out, Net","Draft, check the spec sheet"
+Sennheiser,SR 2050 IEM,Monitors & IEM,1,,,,,,,"In 1L, In 1R, In 2L, In 2R, Loop 1L, Loop 1R, Loop 2L, Loop 2R, Antenna, Net","Draft, check the spec sheet"
+Clear-Com,HelixNet HMS-4X,Comms,1,,,,,,,,
+Clear-Com,FreeSpeak II Base,Comms,1,,,,,,,,
+Riedel,Bolero,Comms,,,,,,,,,
+Marshall,CV503,Video,,,,,,,,"SDI Out, HDMI Out, Power, Control","Draft, check the spec sheet"
+Blackmagic Design,ATEM Mini Pro,Video,,,,,,,,"HDMI In 1-4, HDMI Out, Mic 1-2, USB-C, Ethernet","Draft, check the spec sheet"
+Blackmagic Design,Micro Converter SDI to HDMI,Video,,,,,,,,"SDI In, SDI Loop, HDMI Out, USB Power","Draft, check the spec sheet"
+Luminex,GigaCore 16Xt,Networking,1,,,,,2 rows,,"1-12, SFP 1-4","Draft, check the spec sheet"
+Generic,8-port switch,Networking,1,,,,,1 row,,1-8,
+Generic,16-port switch,Networking,1,,,,,2 rows,,1-16,
+Generic,24-port switch,Networking,1,,,,,2 rows,,1-24,
+Generic,48-port switch,Networking,1,,,,,2 rows,,1-48,
+NETGEAR,M4250-9G1F-PoE+,Networking,1,,,,,1 row,10,1-10,"Draft, check the spec sheet. GSM4210PD. SFP ports are a guess at the front panel"
+NETGEAR,M4250-8G2XF-PoE+,Networking,1,,,,,1 row,9-10,1-10,"Draft, check the spec sheet. GSM4210PX. SFP ports are a guess at the front panel"
+NETGEAR,M4250-10G2F-PoE+,Networking,1,,,,,1 row,11-12,1-12,"Draft, check the spec sheet. GSM4212P. SFP ports are a guess at the front panel"
+NETGEAR,M4250-10G2XF-PoE+,Networking,1,,,,,1 row,11-12,1-12,"Draft, check the spec sheet. GSM4212PX. SFP ports are a guess at the front panel"
+NETGEAR,M4250-26G4F-PoE+,Networking,1,,,,,2 rows,27-30,1-30,"Draft, check the spec sheet. GSM4230P. SFP ports are a guess at the front panel"
+NETGEAR,M4250-26G4XF-PoE+,Networking,1,,,,,2 rows,27-30,1-30,"Draft, check the spec sheet. GSM4230PX. SFP ports are a guess at the front panel"
+NETGEAR,M4250-40G8F-PoE+,Networking,1,,,,,2 rows,41-48,1-48,"Draft, check the spec sheet. GSM4248P. SFP ports are a guess at the front panel"
+NETGEAR,M4250-40G8XF-PoE+,Networking,1,,,,,2 rows,41-48,1-48,"Draft, check the spec sheet. GSM4248PX. SFP ports are a guess at the front panel"
+NETGEAR,M4300-8X8F,Networking,1,,,,,2 rows,9-16,1-16,"Draft, check the spec sheet. SFP ports are a guess at the front panel"
+NETGEAR,M4300-12X12F,Networking,1,,,,,2 rows,13-24,1-24,"Draft, check the spec sheet. SFP ports are a guess at the front panel"
+NETGEAR,M4300-16X,Networking,1,,,,,2 rows,,1-16,"Draft, check the spec sheet. Mark its SFP ports in the switch layout"
+NETGEAR,M4300-24X,Networking,1,,,,,2 rows,,1-24,"Draft, check the spec sheet. Mark its SFP ports in the switch layout"
+NETGEAR,M4300-24X24F,Networking,1,,,,,2 rows,25-48,1-48,"Draft, check the spec sheet. SFP ports are a guess at the front panel"
+NETGEAR,M4300-48X,Networking,1,,,,,2 rows,,1-48,"Draft, check the spec sheet. Mark its SFP ports in the switch layout"
+NETGEAR,M4300-28G,Networking,1,,,,,2 rows,27-28,1-28,"Draft, check the spec sheet. SFP ports are a guess at the front panel"
+NETGEAR,M4300-28G-PoE+,Networking,1,,,,,2 rows,27-28,1-28,"Draft, check the spec sheet. SFP ports are a guess at the front panel"
+NETGEAR,M4300-52G,Networking,1,,,,,2 rows,51-52,1-52,"Draft, check the spec sheet. SFP ports are a guess at the front panel"
+NETGEAR,M4300-52G-PoE+,Networking,1,,,,,2 rows,51-52,1-52,"Draft, check the spec sheet. SFP ports are a guess at the front panel"
+NETGEAR,M4350-16V4C,Networking,1,,,,,2 rows,,1-20,"Draft, check the spec sheet. XSM4316. Mark its SFP ports in the switch layout"
+NETGEAR,M4350-24X,Networking,1,,,,,2 rows,,1-24,"Draft, check the spec sheet. XSM4324. Mark its SFP ports in the switch layout"
+NETGEAR,M4350-24X4V,Networking,1,,,,,2 rows,,1-28,"Draft, check the spec sheet. XSM4328CV. Mark its SFP ports in the switch layout"
+NETGEAR,M4350-36X4V,Networking,1,,,,,2 rows,,1-40,"Draft, check the spec sheet. XSM4340CV. Mark its SFP ports in the switch layout"
+NETGEAR,M4350-24G4XF,Networking,1,,,,,2 rows,,1-28,"Draft, check the spec sheet. GSM4328. Mark its SFP ports in the switch layout"
+NETGEAR,M4350-48G4XF,Networking,1,,,,,2 rows,,1-52,"Draft, check the spec sheet. GSM4352. Mark its SFP ports in the switch layout"
+NETGEAR,M4350-24M4X,Networking,1,,,,,2 rows,,1-28,"Draft, check the spec sheet. MSM4328. Mark its SFP ports in the switch layout"
+NETGEAR,M4350-44M4X4V,Networking,1,,,,,2 rows,,1-52,"Draft, check the spec sheet. MSM4352. Mark its SFP ports in the switch layout"
+Furman,PL-8C,Power,1,,,,,,,"Front, Rear 1-8","Draft, check the spec sheet"
+Generic,Blank panel 1U,Hardware,1,,,,,,,,
+Generic,Blank panel 2U,Hardware,2,,,,,,,,
+Generic,Vent panel 1U,Hardware,1,,,,,,,,
+Generic,Shelf 1U,Hardware,1,,,,,,,,
+Generic,Shelf 2U,Hardware,2,,,,,,,,
+Generic,Drawer 2U,Hardware,2,,,,,,,,
+Generic,Drawer 3U,Hardware,3,,,,,,,,
+Middle Atlantic,EB1,Hardware,1,,,,,,,,1U blank panel
+Middle Atlantic,EB2,Hardware,2,,,,,,,,2U blank panel
+Middle Atlantic,VT1,Hardware,1,,,,,,,,1U vent panel
+Middle Atlantic,VT2,Hardware,2,,,,,,,,2U vent panel
+Middle Atlantic,U1,Hardware,1,,,,,,,,1U utility shelf
+Middle Atlantic,U1V,Hardware,1,,,,,,,,1U vented shelf
+Middle Atlantic,U2,Hardware,2,,,,,,,,2U utility shelf
+Middle Atlantic,D2,Hardware,2,,,,,,,,2U drawer
+Middle Atlantic,D3,Hardware,3,,,,,,,,3U drawer
+Middle Atlantic,LBP-1R,Hardware,,,,,,,,,"Lacing bar, round rod. Check its rack height"
+DiGiCo,SD 192kHz Mic/Line Input Card,Cards,,,,SD In,Count on,,,In 1-8,"Draft, check the spec sheet"
+DiGiCo,SD 192kHz Analogue Output Card,Cards,,,,SD Out,Count on,,,Out 1-8,"Draft, check the spec sheet"
+DiGiCo,SD AES/EBU I/O Card,Cards,,,,SD In,Per slot,,,"AES In 1-4, AES Out 1-4","Draft, check the spec sheet"
+DiGiCo,SD Dante Card,Cards,,,,SD In,Per slot,,,"Dante Pri, Dante Sec","Draft, check the spec sheet"
+DiGiCo,DMI-DANTE64,Cards,,,,DMI,Per slot,,,"Dante Pri, Dante Sec","Draft, check the spec sheet. 64 x 64 over the network"
+DiGiCo,DMI-MADI-B,Cards,,,,DMI,Per slot,,,"MADI In, MADI Out","Draft, check the spec sheet"
+Yamaha,RY16-ML-SILK,Cards,,,,RY,Per slot,,,In 1-16,"Draft, check the spec sheet"
+Yamaha,RY16-DA,Cards,,,,RY,Per slot,,,Out 1-16,"Draft, check the spec sheet"
+Yamaha,RY16-AE,Cards,,,,RY,Per slot,,,"AES In 1-8, AES Out 1-8","Draft, check the spec sheet"
+Yamaha,HY144-D,Cards,,,,HY,Per slot,,,"Dante Pri, Dante Sec","Draft, check the spec sheet"
+Yamaha,HY256-TL,Cards,,,,HY,Per slot,,,"TWINLANe In, TWINLANe Out","Draft, check the spec sheet"
+Yamaha,HY128-MD,Cards,,,,HY,Per slot,,,"MADI In, MADI Out","Draft, check the spec sheet"
+Yamaha,Dante-MY16-AUD2,Cards,,,,MY,Per slot,,,"Dante Pri, Dante Sec","Draft, check the spec sheet"
+Yamaha,PY64-D,Cards,,,,PY,Per slot,,,"Dante Pri, Dante Sec","Draft, check the spec sheet"

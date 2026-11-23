@@ -16,7 +16,8 @@ import {
 } from '../gear'
 import type { PatchTarget } from '../patching'
 import { parseRu } from '../csv'
-import { portKey } from '../ports'
+import { expandPorts, portKey } from '../ports'
+import { defaultLayout } from '../network'
 import { placedIn, placeUnplaced, setGearRack, topOf } from '../racking'
 import { ensureRack, rackById } from '../show'
 import type { Gear, Show } from '../types'
@@ -36,11 +37,12 @@ interface Props {
   onOpenCable: (id: string) => void
   onOpenRack: (id: string) => void
   onOpenGear: (id: string) => void
+  onOpenSwitch: (id: string) => void
 }
 
 const NEW_RACK = '__new-rack__'
 
-export function GearPane({ show, gear, points, report, update, onClose, onOpenCable, onOpenRack, onOpenGear }: Props) {
+export function GearPane({ show, gear, points, report, update, onClose, onOpenCable, onOpenRack, onOpenGear, onOpenSwitch }: Props) {
   const [askingRack, setAskingRack] = useState(false)
   const [patching, setPatching] = useState<PatchTarget | null>(null)
   const [copying, setCopying] = useState(false)
@@ -366,6 +368,29 @@ export function GearPane({ show, gear, points, report, update, onClose, onOpenCa
                 ? 'Not placed in the rack yet.'
                 : 'Give it a rack size to place it in the rack.'}
           </p>
+        )}
+
+        {!isCard && (
+          <div className="switch-check">
+            <label className="check" title="Shared by every unit of this model. A switch gets a page on the Network tab, to set each port's VLANs and colour for its port labels.">
+              <input
+                type="checkbox"
+                checked={!!ownModel?.switchLayout}
+                disabled={!hasModel}
+                onChange={(e) =>
+                  update((s) =>
+                    setModelField(s, gear, { switchLayout: e.target.checked ? defaultLayout(expandPorts(ownModel?.ports ?? '')) : null }),
+                  )
+                }
+              />
+              Network switch
+            </label>
+            {ownModel?.switchLayout && (
+              <button type="button" className="link small" onClick={() => onOpenSwitch(gear.id)}>
+                Ports and labels →
+              </button>
+            )}
+          </div>
         )}
 
         <CardSlots show={show} gear={gear} points={points} update={update} onOpenGear={onOpenGear} />

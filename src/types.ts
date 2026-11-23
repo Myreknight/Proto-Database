@@ -136,6 +136,39 @@ export interface Gear {
   host: GearHost | null
   // Which of the show's gear lists it's on (Main, Production…), or none.
   listId: string | null
+  // A network switch's ports, by name: VLANs, trunk or access, colour (see network.ts).
+  switchPorts: Record<string, SwitchPort>
+}
+
+// How one port of a network switch is set up, for its label. Access ports carry one
+// VLAN; trunk ports carry tagged VLANs too, with `vlan` as the untagged (native) one.
+export interface SwitchPort {
+  mode: 'access' | 'trunk'
+  vlan: number
+  tagged: number[]
+  // Fills the port on the label instead of its VLAN's colour.
+  color: string | null
+  // Printed by the port; when blank, the label says what's patched there.
+  desc: string
+}
+
+// How a switch model's ports sit on its front panel, for drawing the label: one or two
+// rows (odd ports on top, even below), which are SFP cages, and wider gaps between groups.
+export interface SwitchLayout {
+  rows: 1 | 2
+  // SFP ports, by name or number ("25-28"); ports named SFP… count anyway.
+  sfp: string
+  // Ports with a wider gap before them ("25"), and the gap in mm.
+  gapBefore: string
+  gap: number
+  // Also a gap every so many columns (0: never).
+  groupCols: number
+}
+
+export interface Vlan {
+  id: number
+  name: string
+  color: string
 }
 
 // Which unit a card is in, and which of its slots ("SD In 3", "RY 2").
@@ -173,6 +206,8 @@ export interface GearModel {
   slots: string
   // For a card: the kind of slot it fits ("SD In", "RY", "HY"); empty for anything else.
   card: string
+  // Set for a network switch: how its ports are laid out (see network.ts).
+  switchLayout: SwitchLayout | null
   // How a card's ports are named in a unit: within its slot ("RY3 In 1"), or counting on
   // through the slots of its kind (the third SD input card's In 1 is In 17).
   cardNumbering: CardNumbering
@@ -225,6 +260,8 @@ export interface ShowInfo {
   // The lists gear is split into for paperwork (Main, Production…), in print order. Each
   // unit is on one of them, or none.
   gearLists: GearList[]
+  // The show's VLANs, for network switch port labels. VLAN 1 is always there.
+  vlans: Vlan[]
 }
 
 export interface GearList {

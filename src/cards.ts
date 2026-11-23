@@ -151,6 +151,7 @@ export function setCard(show: Show, host: Gear, slot: string, choice: { model: G
     host: { gearId: host.id, slot },
     // A card goes on the list its unit is on.
     listId: host.listId,
+    switchPorts: {},
   }
   // After the unit and the cards already in it, so the gear list reads in order.
   const at = Math.max(...[host.id, ...cardsIn(show, host.id).map((c) => c.id)].map((id) => show.gear.findIndex((g) => g.id === id)))
